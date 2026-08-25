@@ -1,26 +1,37 @@
 # Procesamiento de Datos a Gran Escala
 
-## Taller Python 🐍 
-**Autor:** Lorenzo Ramirez Calderon (ID:20550074)
+Repositorio de talleres, proyectos y actividades desarrollados en la asignatura.
 
-**Docente:** John Jairo Corredor
+**Autor**: Lorenzo Ramirez Calderon (ID: 20550074)
 
-**Objetivo:** Fortalecer las bases de programación en Python mediante el estudio de estructuras de datos, control de flujo, funciones, programación orientada a objetos y visualización de datos.
+**Docente**: John Jairo Corredor
 
-Este repositorio reúne los cuadernos desarrollados durante el Taller de **Python**, 
-donde se estudiaron los conceptos básicos del lenguaje y su aplicación mediante ejercicios prácticos.
+## Objetivo de la Asignatura
+Comprender y aplicar conceptos, tecnologías y técnicas de almacenamiento, procesamiento y análisis de datos a gran 
+escala, incluyendo el uso de bases de datos NoSQL y herramientas orientadas al procesamiento de Big Data.
 
-## Módulos
 
-- Cadenas de Caracteres
-- Tuplas
-- Listas
-- Conjuntos 
-- Diccionarios
-- Condicionales
-- Bucles
-- Funciones
-- Programación Orientada a Objetos - Clases 
-- Introduccion a la biblioteca Matplotlib
-- **Bono:** Integración de los conceptos aprendidos en diferentes retos 
+
+## Contenido
+
+[🐍 Taller de Python](taller-python)
+
+Introducción y fortalecimiento de los fundamentos de Python.
+
+Temas: cadenas de caracteres, tuplas, listas, conjuntos, diccionarios, condicionales, bucles, funciones, clases y Matplotlib.
+
+### Estructura
+├── assets/
+├── taller-python/
+│   ├── 01-Python-Cadenas.ipynb
+│   ├── 02-Python-Tuplas.ipynb
+│   ├── 03-Python-Listas.ipynb
+│   ├── 04-Python-Conjuntos.ipynb
+│   ├── 05-Python-Diccionarios.ipynb
+│   ├── 06-Python-Condiciones.ipynb
+│   ├── 07-Python-Bucles.ipynb
+│   ├── 08-Python-Funciones.ipynb
+│   ├── 09_Python_Clases.ipynb
+│   └── Practico_Bono_1.ipynb
+└── README.md
 
