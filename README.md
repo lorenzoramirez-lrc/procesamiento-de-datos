@@ -12,15 +12,6 @@ escala, incluyendo el uso de bases de datos NoSQL y herramientas orientadas al p
 
 
 
-## Contenido
-
-### 🐍 Taller de Python
-Introducción y fortalecimiento de los fundamentos de Python.
-
-Temas: cadenas de caracteres, tuplas, listas, conjuntos, diccionarios, condicionales, bucles, funciones, clases y Matplotlib.
-
-[Ver Taller](taller-python)
-
 
 ## Estructura del Repositorio
 ```
@@ -36,6 +27,24 @@ Temas: cadenas de caracteres, tuplas, listas, conjuntos, diccionarios, condicion
 │   ├── 08-Python-Funciones.ipynb
 │   ├── 09_Python_Clases.ipynb
 │   └── Practico_Bono_1.ipynb
+├── taller-spark.ipynb
 └── README.md
 ```
+
+## Contenido
+
+### 🐍 Taller de Python
+Introducción y fortalecimiento de los fundamentos de Python.
+
+Temas: cadenas de caracteres, tuplas, listas, conjuntos, diccionarios, condicionales, bucles, funciones, clases y Matplotlib.
+
+[Ver Taller](taller-python)
+
+### Taller Apache Spark
+
+Introducción al procesamiento de datos y machine learning distribuido con Apache Spark.
+
+Temas: SparkSession, DataFrames, exploración y preparación de datos, feature engineering, escalado y modelos de clasificación.
+
+[Ver Taller](taller-spark.ipynb)
 
