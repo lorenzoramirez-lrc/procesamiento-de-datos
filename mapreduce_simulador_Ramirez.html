@@ -1,0 +1,2845 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Procesamiento de Datos a Gran Escala — Simulador MapReduce</title>
+
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #171a23;
+    --panel2: #1e2330;
+    --border: #303747;
+    --text: #eef2f7;
+    --muted: #a9b2c3;
+    --accent: #8b7cf6;
+    --accent2: #5fd1b9;
+    --yellow: #f4c95d;
+    --red: #f47b7b;
+    --blue: #6ea8fe;
+    --green: #69d28f;
+    --shadow: 0 14px 40px rgba(0,0,0,.28);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system,
+      BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background:
+      radial-gradient(circle at top, #191d2a 0, var(--bg) 42%);
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  .container {
+    width: min(1400px, 94vw);
+    margin: 0 auto;
+    padding: 30px 0 60px;
+  }
+
+  /* =========================
+     HEADER
+  ========================= */
+
+  header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 25px;
+    align-items: end;
+    margin-bottom: 24px;
+  }
+
+  h1 {
+    margin: 0 0 8px;
+    font-size: clamp(2rem, 4vw, 3.4rem);
+    letter-spacing: -.04em;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    max-width: 850px;
+    font-size: 1.05rem;
+  }
+
+  .badge {
+    border: 1px solid var(--border);
+    background: rgba(139,124,246,.1);
+    color: #c9c2ff;
+    border-radius: 999px;
+    padding: 9px 14px;
+    white-space: nowrap;
+  }
+
+  .course-label {
+    color: var(--accent2);
+    font-weight: 850;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    font-size: .78rem;
+    margin-bottom: 7px;
+  }
+
+  .academic-info {
+    text-align: right;
+    color: var(--muted);
+    line-height: 1.8;
+    font-size: .88rem;
+  }
+
+  .academic-info b {
+    color: var(--text);
+  }
+
+  /* =========================
+     CONTROLES
+  ========================= */
+
+  .controls {
+      background: rgba(23, 26, 35, .92);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      align-items: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,.22);
+      margin-bottom: 22px;
+
+      position: sticky;
+      top: 12px;
+      z-index: 50;
+
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+
+      transition:
+          padding .25s ease,
+      box-shadow .25s ease,
+      background .25s ease;
+  } 
+
+  .controls.is-scrolled {
+      padding: 10px 14px;
+      background: rgba(15, 17, 23, .96);
+      box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  .control-group {
+    min-width: 210px;
+  }
+
+  .control-title {
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .control-description {
+      color: var(--muted);
+      font-size: .82rem;
+      margin-bottom: 7px;
+      line-height: 1.35;
+  }
+
+  input[type=range] {
+      width: 230px;
+      accent-color: var(--accent);
+      vertical-align: middle;
+  }
+  .nodes-value {
+    display: inline-flex;
+    min-width: 38px;
+    justify-content: center;
+    font-weight: 800;
+    color: #fff;
+  }
+
+  button {
+    border: 1px solid var(--border);
+    background: var(--panel2);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-weight: 700;
+    transition:
+      .18s transform,
+      .18s background,
+      .18s box-shadow;
+  }
+
+  button:hover {
+    transform: translateY(-1px);
+    background: #282e3d;
+  }
+
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+
+  button.primary:hover {
+    background: #7969ee;
+  }
+
+  button:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .button-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-self: flex-end;
+  }
+
+  /* =========================
+     LAYOUT PRINCIPAL
+  ========================= */
+
+  .process-layout {
+    display: grid;
+    grid-template-columns: 210px 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+
+  .step-sidebar {
+      position: sticky;
+      top: 54vh;
+      transform: translateY(-50%);
+
+      background: rgba(23, 26, 35, .96);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+
+      box-shadow: var(--shadow);
+
+      max-height: 70vh;
+      overflow-y: auto;
+  }
+
+   
+  .sidebar-title {
+      font-weight: 850;
+      margin-bottom: 10px;
+      font-size: .9rem;
+  }
+
+
+  .phasebar {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin: 0;
+  }
+
+  .phase {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 9px 10px 9px 13px;
+      text-align: left;
+      color: var(--muted);
+      font-size: .82rem;
+      position: relative;
+      transition:
+          .25s background,
+      .25s border,
+      .25s color,
+      .25s transform;
+  }
+
+
+  .phase:hover {
+    transform: translateX(2px);
+  }
+
+  .phase.active {
+    color: white;
+    border-color: var(--accent);
+    background: rgba(139,124,246,.14);
+  }
+
+  .phase.done {
+    color: #c5f3dc;
+    border-color: #35694d;
+    background: rgba(105,210,143,.08);
+  }
+
+  .phase.active::before,
+  .phase.done::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    border-radius: 3px;
+    background: var(--accent);
+  }
+
+  .phase.done::before {
+    background: var(--green);
+  }
+
+  .process-main {
+    min-width: 0;
+  }
+
+  /* =========================
+     TARJETAS
+  ========================= */
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .card h2,
+  .card h3 {
+    margin-top: 0;
+  }
+
+  .explain {
+    display: grid;
+    grid-template-columns: 1.3fr .7fr;
+    gap: 18px;
+    margin-bottom: 22px;
+  }
+
+  .step-number {
+    display: inline-flex;
+    width: 30px;
+    height: 30px;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    border-radius: 50%;
+    font-weight: 900;
+    margin-right: 8px;
+  }
+
+  .hint {
+    color: var(--muted);
+  }
+
+  .formula {
+    background: #0d1016;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: #d8dcff;
+    overflow-x: auto;
+  }
+
+  .section-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: start;
+  }
+
+  .important-note {
+    background: rgba(244,201,93,.09);
+    border: 1px solid rgba(244,201,93,.3);
+    color: var(--yellow);
+    padding: 9px 12px;
+    border-radius: 9px;
+    font-weight: 800;
+    white-space: nowrap;
+    font-size: .85rem;
+  }
+
+  /* =========================
+     CLUSTER
+  ========================= */
+
+  .cluster {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(190px,1fr));
+    gap: 12px;
+    margin-top: 14px;
+  }
+
+  .cluster-node {
+    background: #11151c;
+    border: 1px solid #363d4c;
+    border-radius: 13px;
+    padding: 13px;
+    min-height: 150px;
+  }
+
+  .cluster-node h3 {
+    margin: 0 0 8px;
+    font-size: .95rem;
+  }
+
+  .task-list {
+    display: grid;
+    gap: 7px;
+  }
+
+  .task {
+    border-radius: 8px;
+    padding: 7px 9px;
+    font-family: ui-monospace, monospace;
+    font-size: .76rem;
+    background: #171c26;
+    border: 1px solid #333b4c;
+  }
+
+  .task.mapper {
+    border-left: 3px solid var(--blue);
+  }
+
+  .task.reducer {
+    border-left: 3px solid var(--green);
+  }
+
+  .task-label {
+    font-weight: 900;
+  }
+
+  .task-detail {
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .cluster-legend {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    color: var(--muted);
+    font-size: .78rem;
+    margin-top: 12px;
+  }
+
+  .mapping-explanation {
+    margin-top: 12px;
+    background: #10141b;
+    border: 1px dashed #3b4353;
+    border-radius: 9px;
+    padding: 10px 12px;
+    color: var(--muted);
+    font-size: .85rem;
+  }
+
+  /* =========================
+     FLUJO
+  ========================= */
+
+  .vertical-flow {
+    margin-top: 22px;
+  }
+
+  .flow-intro {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 18px;
+    margin-bottom: 16px;
+  }
+
+  .stage-marker {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: rgba(139,124,246,.12);
+      border: 1px solid rgba(139,124,246,.3);
+      color: #d8d2ff;
+      font-size: .75rem;
+      font-weight: 850;
+      white-space: nowrap;
+      box-shadow: 0 4px 14px rgba(139,124,246,.08);
+  }
+
+  .stage-marker::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px rgba(139,124,246,.7);
+  }
+
+  
+
+  .stage-hidden {
+    display: none;
+  }
+
+  .stage-visible {
+    display: block;
+    animation: revealStage .42s ease-out;
+  }
+
+  .current-stage {
+    border-color: var(--accent) !important;
+    box-shadow:
+      0 0 0 1px rgba(139,124,246,.16),
+      var(--shadow);
+  }
+
+  .flow-connector {
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #737d91;
+    font-size: 2rem;
+    animation: connectorAppear .35s ease-out;
+  }
+
+  .stage-wide {
+      background: #11151c;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 15px;
+
+      scroll-margin-top: 130px;
+  } 
+
+  .stage-title-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .stage-title-row .tag {
+    color: var(--muted);
+    font-size: .78rem;
+  }
+
+  .stage-title {
+    font-weight: 850;
+    font-size: 1.05rem;
+  }
+
+  .stage-sub {
+    color: var(--muted);
+    font-size: .78rem;
+    margin-bottom: 12px;
+  }
+
+  /* =========================
+     DATOS
+  ========================= */
+
+  .results {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 10px;
+  }
+
+  .result {
+    background:
+      linear-gradient(145deg, rgba(105,210,143,.11), #11151b);
+    border: 1px solid #35694d;
+    border-radius: 11px;
+    padding: 12px;
+  }
+
+  .result .city {
+    color: var(--accent2);
+    font-weight: 900;
+  }
+
+  .result .temp {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: var(--yellow);
+  }
+
+  .record,
+  .kv {
+    background: #11141b;
+    border: 1px solid #2c3342;
+    border-radius: 8px;
+    padding: 7px 9px;
+    margin: 6px 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .78rem;
+  }
+
+  .record .city,
+  .kv .key {
+    color: var(--accent2);
+    font-weight: 800;
+  }
+
+  .kv .value {
+    color: var(--yellow);
+  }
+
+  .small {
+    font-size: .75rem;
+    color: var(--muted);
+  }
+
+  /* =========================
+     SPLIT / MAP / SHUFFLE / REDUCE
+  ========================= */
+
+  .split-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(180px,1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .split-card {
+    background: #11151c;
+    border: 1px solid #333a49;
+    border-radius: 10px;
+    padding: 10px;
+  }
+
+  .split-card h4 {
+    margin: 0 0 7px;
+    font-size: .82rem;
+  }
+
+  .split-record {
+    font-family: ui-monospace,monospace;
+    font-size: .76rem;
+    color: #cfd5df;
+    padding: 3px 0;
+    border-bottom: 1px dashed #2d3441;
+  }
+
+  .mapper-grid,
+  .reducer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(190px,1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .mini-task {
+    background: #151a23;
+    border: 1px solid #333b4a;
+    border-radius: 10px;
+    padding: 10px;
+  }
+
+  .mini-task.mapper {
+    border-top: 3px solid var(--blue);
+  }
+
+  .mini-task.reducer {
+    border-top: 3px solid var(--green);
+  }
+
+  .mini-task h4 {
+    margin: 0 0 7px;
+    font-size: .84rem;
+  }
+
+  .shuffle-grid {
+    display: grid;
+    gap: 7px;
+  }
+
+  .shuffle-group {
+    border: 1px solid #3b4251;
+    border-radius: 9px;
+    padding: 8px;
+    background: #12151c;
+  }
+
+  .shuffle-group .key {
+    color: var(--accent2);
+    font-weight: 900;
+  }
+
+  .arrowline {
+    color: #70798c;
+    text-align: center;
+    font-size: .8rem;
+    margin: 2px 0;
+  }
+
+  /* =========================
+     TABLA
+  ========================= */
+
+  .dataset {
+    margin-top: 22px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th,
+  td {
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+
+  th {
+    color: var(--muted);
+    font-size: .82rem;
+  }
+
+  td {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .84rem;
+  }
+
+  .legend {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: .82rem;
+  }
+
+  .dot {
+    width: 9px;
+    height: 9px;
+    display: inline-block;
+    border-radius: 50%;
+    margin-right: 5px;
+  }
+
+  .dot.a {
+    background: var(--accent2);
+  }
+
+  .dot.b {
+    background: var(--yellow);
+  }
+
+  .footer-note {
+    color: var(--muted);
+    text-align: center;
+    margin-top: 30px;
+    font-size: .82rem;
+  }
+
+  /* =========================
+     ANIMACIONES
+  ========================= */
+
+  @keyframes revealStage {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes connectorAppear {
+    from {
+      opacity: 0;
+      transform: scaleY(.5);
+    }
+
+    to {
+      opacity: 1;
+      transform: scaleY(1);
+    }
+  }
+
+  .stage-focus {
+    animation:
+      revealStage .42s ease-out,
+      stageHighlight 1.2s ease-out;
+  }
+
+  @keyframes stageHighlight {
+    0% {
+      border-color: var(--accent);
+      box-shadow:
+        0 0 0 3px rgba(139,124,246,.25),
+        0 0 35px rgba(139,124,246,.18);
+    }
+
+    100% {
+      border-color: var(--border);
+      box-shadow: none;
+    }
+  }
+
+  /* =========================
+     RESPONSIVE
+  ========================= */
+
+  @media (max-width: 900px) {
+    .process-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .step-sidebar {
+      position: sticky;
+      top: 120px;
+      z-index: 40;
+    }
+
+    .phasebar {
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
+    }
+
+    .academic-info {
+      text-align: left;
+    }
+
+    .section-heading {
+      flex-direction: column;
+    }
+  }
+
+  @media (max-width: 850px) {
+    header,
+    .explain {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 700px) {
+    .flow-intro {
+      flex-direction: column;
+    }
+
+    .phasebar {
+      grid-template-columns: repeat(2,1fr);
+    }
+
+    .controls {
+      position: relative;
+    }
+
+    .control-group {
+      width: 100%;
+    }
+
+    input[type=range] {
+      width: 100%;
+    }
+
+    .button-group {
+      width: 100%;
+    }
+
+    .button-group button {
+      flex: 1;
+    }
+  }
+
+  @media (max-width: 500px) {
+    .phasebar {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- =========================
+       HEADER
+  ========================= -->
+
+  <header>
+    <div>
+      <div class="course-label">
+        Procesamiento de Datos a Gran Escala
+      </div>
+
+      <h1>Simulador didáctico de MapReduce</h1>
+
+      <div class="subtitle">
+        Visualiza cómo se dividen los datos y cómo las tareas
+        <b>Mapper</b> y <b>Reducer</b> se distribuyen entre los nodos
+        de un clúster.
+      </div>
+    </div>
+
+    <div class="academic-info">
+      <div>
+        <b>Lorenzo Ramirez Calderon</b>
+        <span>(ID:20550074)</span>
+      </div>
+
+      <div>
+        Ingenieria de Sistemas
+      </div>
+
+      <div>
+        Docente: John Jairo Corredor
+      </div>
+    </div>
+  </header>
+
+  <!-- =========================
+       CONTROLES
+  ========================= -->
+
+  <section class="controls">
+
+    <div class="control-group">
+      <div class="control-title">
+        Nodos físicos:
+        <span class="nodes-value" id="nodesValue">3</span>
+      </div>
+
+      <div class="control-description">
+        Máximo 5. Representan las máquinas disponibles en el clúster.
+      </div>
+
+      <input
+        id="nodes"
+        type="range"
+        min="1"
+        max="5"
+        value="3"
+        step="1"
+      >
+    </div>
+
+
+    <div class="control-group">
+      <div class="control-title">
+        Tareas Mapper:
+        <span class="nodes-value" id="mappersValue">4</span>
+      </div>
+
+      <div class="control-description">
+        Número de tareas lógicas de Map; no tiene que coincidir con los nodos.
+      </div>
+
+      <input
+        id="mappers"
+        type="range"
+        min="1"
+        max="8"
+        value="4"
+        step="1"
+      >
+    </div>
+
+
+    <div class="control-group">
+      <div class="control-title">
+        Tareas Reducer:
+        <span class="nodes-value" id="reducersValue">2</span>
+      </div>
+
+      <div class="control-description">
+        Número de tareas lógicas de Reduce; también es independiente de los nodos.
+      </div>
+
+      <input
+        id="reducers"
+        type="range"
+        min="1"
+        max="5"
+        value="2"
+        step="1"
+      >
+    </div>
+
+
+    <div class="button-group">
+
+      <button id="prevBtn">
+        ← Anterior
+      </button>
+
+      <button id="nextBtn" class="primary">
+        Siguiente →
+      </button>
+
+      <button id="playBtn">
+        ▶ Ejecutar todo
+      </button>
+
+      <button id="resetBtn">
+        ↺ Reiniciar
+      </button>
+
+    </div>
+
+  </section>
+
+
+  <!-- =========================
+       PROCESO
+  ========================= -->
+
+  <div class="process-layout">
+
+    <aside class="step-sidebar">
+
+      <div class="sidebar-title">
+        Flujo MapReduce
+      </div>
+
+      <div id="phasebar"></div>
+
+    </aside>
+
+
+    <main class="process-main">
+
+      <!-- EXPLICACIÓN -->
+
+      <section class="explain">
+
+        <div class="card" id="explanation"></div>
+
+        <div class="card">
+
+          <h3>
+            Idea clave
+          </h3>
+
+          <p id="keyIdea" class="hint"></p>
+
+          <div
+            class="formula"
+            id="formula"
+          ></div>
+
+        </div>
+
+      </section>
+
+
+      <!-- CLUSTER -->
+
+      <section class="card">
+
+        <div class="section-heading">
+
+          <div>
+
+            <h2>
+              Arquitectura del clúster
+            </h2>
+
+            <p class="hint">
+              Las tareas lógicas se asignan a los nodos físicos.
+              Cambia los controles de arriba para ver que no existe
+              una relación 1:1.
+            </p>
+
+          </div>
+
+          <div class="important-note">
+            Nodos ≠ tareas
+          </div>
+
+        </div>
+
+        <div id="clusterView"></div>
+
+      </section>
+
+
+      <!-- FLUJO PASO A PASO -->
+
+      <section
+        class="card vertical-flow"
+        id="verticalFlow"
+      >
+
+        <div class="flow-intro">
+
+          <div>
+
+            <h2>
+              Proceso paso a paso
+            </h2>
+
+            <p class="hint">
+              Presiona <b>Siguiente →</b> para revelar una etapa.
+              Las anteriores permanecen visibles.
+            </p>
+
+          </div>
+
+          <div
+            class="stage-marker"
+            id="currentStageMarker"
+          >
+            Etapa 1 de 6 · Entrada
+          </div>
+
+        </div>
+
+
+        <div
+          id="inputStage"
+          class="stage-hidden"
+        ></div>
+
+
+        <div
+          id="connector1"
+          class="flow-connector stage-hidden"
+        >
+          ↓
+        </div>
+
+
+        <div
+          id="splitStage"
+          class="stage-hidden"
+        ></div>
+
+
+        <div
+          id="connector2"
+          class="flow-connector stage-hidden"
+        >
+          ↓
+        </div>
+
+
+        <div
+          id="mapStage"
+          class="stage-hidden"
+        ></div>
+
+
+        <div
+          id="connector3"
+          class="flow-connector stage-hidden"
+        >
+          ↓
+        </div>
+
+
+        <div
+          id="shuffleStage"
+          class="stage-hidden"
+        ></div>
+
+
+        <div
+          id="connector4"
+          class="flow-connector stage-hidden"
+        >
+          ↓
+        </div>
+
+
+        <div
+          id="reduceStage"
+          class="stage-hidden"
+        ></div>
+
+
+        <div
+          id="connector5"
+          class="flow-connector stage-hidden"
+        >
+          ↓
+        </div>
+
+
+        <div
+          id="outputStage"
+          class="stage-hidden"
+        ></div>
+
+      </section>
+
+
+      <!-- DATASET -->
+
+      <section class="card dataset">
+
+        <h2>
+          Datos de entrada completos
+        </h2>
+
+        <p class="hint">
+          Cada fila representa una observación
+          <code>&lt;ciudad, temperatura&gt;</code>.
+          La ciudad es la <b>clave</b> y la temperatura es el
+          <b>valor</b>.
+        </p>
+
+        <div id="datasetTable"></div>
+
+        <div class="legend">
+
+          <span>
+            <span class="dot a"></span>
+            Clave: ciudad
+          </span>
+
+          <span>
+            <span class="dot b"></span>
+            Valor: temperatura
+          </span>
+
+        </div>
+
+      </section>
+
+    </main>
+
+  </div>
+
+
+  <div class="footer-note">
+
+    Simulador educativo: la distribución se simplifica para visualizar
+    el concepto. En Hadoop real, la cantidad de tareas depende de los
+    bloques, configuración y recursos del clúster.
+
+  </div>
+
+</div>
+
+
+<script>
+
+/* =========================================================
+   DATOS
+========================================================= */
+
+const DATA = [
+  ["Toronto", 18],
+  ["Londres", 25],
+  ["Tokio", 31],
+  ["Toronto", 22],
+  ["Nueva York", 28],
+  ["Londres", 27],
+  ["Tokio", 38],
+  ["Toronto", 32],
+  ["Nueva York", 33],
+  ["Londres", 21],
+  ["Tokio", 34],
+  ["Nueva York", 29]
+];
+
+
+/* =========================================================
+   ETAPAS
+========================================================= */
+
+const phases = [
+
+  {
+    name: "Entrada",
+    title: "1. Entrada — tenemos todos los registros",
+
+    text:
+      "El trabajo recibe los datos de entrada. Cada registro contiene " +
+      "una ciudad y una temperatura. Todavía no existen Mappers ni " +
+      "Reducers trabajando sobre estos datos.",
+
+    idea:
+      "La entrada es el problema completo. Nuestro objetivo será " +
+      "transformar 12 observaciones en un máximo por ciudad.",
+
+    formula:
+      "<ciudad, temperatura>"
+  },
+
+
+  {
+    name: "Dividir",
+    title: "2. División — los datos se separan en Input Splits",
+
+    text:
+      "La entrada se divide en fragmentos que serán procesados por " +
+      "tareas Mapper. Importante: la cantidad de nodos físicos NO " +
+      "determina directamente cuántas tareas Mapper existen.",
+
+    idea:
+      "Un clúster con 3 nodos puede ejecutar, por ejemplo, 4 tareas " +
+      "Mapper. Algunas máquinas pueden ejecutar más de una tarea.",
+
+    formula:
+      "Datos → Input Split 1 | Split 2 | ... | Split M"
+  },
+
+
+  {
+    name: "Map",
+    title: "3. Map — cada tarea produce pares clave/valor",
+
+    text:
+      "Cada tarea Mapper procesa su Input Split y ejecuta la función " +
+      "map(). En este ejemplo simplemente emite la ciudad como clave " +
+      "y la temperatura como valor.",
+
+    idea:
+      "Map transforma registros. No calcula todavía el máximo de " +
+      "cada ciudad.",
+
+    formula:
+      "map(ciudad, temperatura) → <ciudad, temperatura>"
+  },
+
+
+  {
+    name: "Shuffle",
+    title: "4. Shuffle — los pares se agrupan por clave",
+
+    text:
+      "Después de Map, el sistema particiona y reorganiza los pares. " +
+      "Todos los valores de una misma ciudad deben llegar al mismo Reducer.",
+
+    idea:
+      "Shuffle es la frontera lógica entre Map y Reduce: redistribuye " +
+      "los datos según la clave.",
+
+    formula:
+      "Toronto → [18, 22, 32] | Tokio → [31, 38, 34] | ..."
+  },
+
+
+  {
+    name: "Reduce",
+    title: "5. Reduce — cada tarea calcula el máximo de sus claves",
+
+    text:
+      "Cada Reducer recibe uno o varios grupos de claves y aplica " +
+      "max() sobre los valores de cada grupo.",
+
+    idea:
+      "La cantidad de Reducers también es independiente de la " +
+      "cantidad de nodos físicos.",
+
+    formula:
+      "reduce(ciudad, valores) → <ciudad, max(valores)>"
+  },
+
+
+  {
+    name: "Resultado",
+    title: "6. Resultado — obtenemos el máximo por ciudad",
+
+    text:
+      "Cada tarea Reducer produce resultados. Estos resultados pueden " +
+      "escribirse en almacenamiento distribuido como archivos de salida " +
+      "separados por Reducer.",
+
+    idea:
+      "El resultado final es un resumen: una temperatura máxima por " +
+      "cada ciudad.",
+
+    formula:
+      "Toronto → 32°C | Londres → 27°C | Tokio → 38°C | Nueva York → 33°C"
+  }
+
+];
+
+
+/* =========================================================
+   ESTADO
+========================================================= */
+
+let phase = 0;
+
+let nodeCount = 3;
+let mapperCount = 4;
+let reducerCount = 2;
+
+let timer = null;
+
+
+/* =========================================================
+   FUNCIONES MAPREDUCE
+========================================================= */
+
+function distributeTasks(count) {
+
+  return Array.from(
+    { length: nodeCount },
+    () => []
+  );
+
+}
+
+
+function assignTasks(count, prefix) {
+
+  const nodes = distributeTasks(count);
+
+  for (let i = 0; i < count; i++) {
+
+    nodes[i % nodeCount].push(
+      `${prefix}${i + 1}`
+    );
+
+  }
+
+  return nodes;
+
+}
+
+
+function splitData() {
+
+  const splits = Array.from(
+    { length: mapperCount },
+    () => []
+  );
+
+  DATA.forEach((record, i) => {
+
+    splits[i % mapperCount].push(record);
+
+  });
+
+  return splits;
+
+}
+
+
+function mapData(splits) {
+
+  return splits.map(
+    split =>
+      split.map(
+        ([city, temp]) => ({
+          key: city,
+          value: temp
+        })
+      )
+  );
+
+}
+
+
+function shuffle(mapped) {
+
+  const groups = {};
+
+  mapped.flat().forEach(
+    ({ key, value }) => {
+
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+
+      groups[key].push(value);
+
+    }
+  );
+
+  return groups;
+
+}
+
+
+function partitionGroups(groups) {
+
+  const partitions =
+    Array.from(
+      { length: reducerCount },
+      () => []
+    );
+
+  Object.entries(groups).forEach(
+    ([key, values]) => {
+
+      let hash = 0;
+
+      for (const c of key) {
+
+        hash =
+          (hash * 31 +
+            c.charCodeAt(0)) >>> 0;
+
+      }
+
+      partitions[
+        hash % reducerCount
+      ].push([key, values]);
+
+    }
+  );
+
+  return partitions;
+
+}
+
+
+function reducePartitions(partitions) {
+
+  return partitions.flatMap(
+    p =>
+      p.map(
+        ([key, values]) =>
+          [key, Math.max(...values)]
+      )
+  );
+
+}
+
+
+/* =========================================================
+   SEGURIDAD HTML
+========================================================= */
+
+function esc(s) {
+
+  return String(s).replace(
+    /[&<>"']/g,
+    c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    }[c])
+  );
+
+}
+
+
+/* =========================================================
+   HTML AUXILIAR
+========================================================= */
+
+function recordHTML(city, temp) {
+
+  return `
+    <div class="record">
+      <span class="city">
+        ${esc(city)}
+      </span>
+
+      <span style="color:#777">
+        &lt;
+      </span>
+
+      <span style="color:var(--yellow)">
+        ${temp}°C
+      </span>
+
+      <span style="color:#777">
+        &gt;
+      </span>
+    </div>
+  `;
+
+}
+
+
+function kvHTML(key, value) {
+
+  return `
+    <div class="kv">
+
+      <span class="key">
+        ${esc(key)}
+      </span>
+
+      <span style="color:#777">
+        →
+      </span>
+
+      <span class="value">
+        ${value}
+      </span>
+
+    </div>
+  `;
+
+}
+
+
+/* =========================================================
+   DATASET
+========================================================= */
+
+function renderDataset() {
+
+  let html = `
+    <table>
+
+      <thead>
+
+        <tr>
+          <th>#</th>
+          <th>Ciudad (clave)</th>
+          <th>Temperatura (valor)</th>
+        </tr>
+
+      </thead>
+
+      <tbody>
+  `;
+
+  DATA.forEach(
+    ([city, temp], i) => {
+
+      html += `
+        <tr>
+
+          <td>
+            ${i + 1}
+          </td>
+
+          <td style="color:var(--accent2)">
+            ${esc(city)}
+          </td>
+
+          <td style="color:var(--yellow)">
+            ${temp}°C
+          </td>
+
+        </tr>
+      `;
+
+    }
+  );
+
+  html += `
+      </tbody>
+    </table>
+  `;
+
+  document.getElementById(
+    "datasetTable"
+  ).innerHTML = html;
+
+}
+
+
+/* =========================================================
+   CLUSTER
+========================================================= */
+
+function renderCluster() {
+
+  const mapperNodes =
+    assignTasks(
+      mapperCount,
+      "M"
+    );
+
+  const reducerNodes =
+    assignTasks(
+      reducerCount,
+      "R"
+    );
+
+  let html = `
+    <div class="cluster">
+  `;
+
+
+  for (
+    let n = 0;
+    n < nodeCount;
+    n++
+  ) {
+
+    html += `
+
+      <div class="cluster-node">
+
+        <h3>
+          Nodo ${n + 1}
+        </h3>
+
+        <div class="small">
+          Máquina física / worker
+        </div>
+
+
+        <div style="margin-top:10px">
+          <b style="color:var(--blue)">
+            Mappers
+          </b>
+        </div>
+
+
+        <div class="task-list">
+
+          ${
+            mapperNodes[n].length
+
+            ? mapperNodes[n]
+                .map(
+                  t => `
+
+                    <div class="task mapper">
+
+                      <div class="task-label">
+                        ${t}
+                      </div>
+
+                      <div class="task-detail">
+                        Tarea Mapper
+                      </div>
+
+                    </div>
+
+                  `
+                )
+                .join("")
+
+            : `
+              <div class="small">
+                Ninguno
+              </div>
+            `
+          }
+
+        </div>
+
+
+        <div style="margin-top:10px">
+
+          <b style="color:var(--green)">
+            Reducers
+          </b>
+
+        </div>
+
+
+        <div class="task-list">
+
+          ${
+            reducerNodes[n].length
+
+            ? reducerNodes[n]
+                .map(
+                  t => `
+
+                    <div class="task reducer">
+
+                      <div class="task-label">
+                        ${t}
+                      </div>
+
+                      <div class="task-detail">
+                        Tarea Reducer
+                      </div>
+
+                    </div>
+
+                  `
+                )
+                .join("")
+
+            : `
+              <div class="small">
+                Ninguno
+              </div>
+            `
+          }
+
+        </div>
+
+      </div>
+    `;
+
+  }
+
+
+  html += `
+
+    </div>
+
+    <div class="mapping-explanation">
+
+      <b>Observa:</b>
+
+      tienes ${nodeCount} nodos,
+      ${mapperCount} Mappers y
+      ${reducerCount} Reducers.
+
+      Las tareas se distribuyen entre los nodos disponibles.
+
+      Si aumentas los nodos, no estás diciendo automáticamente
+      "ahora tengo ese número de Mappers y Reducers";
+      estás agregando máquinas capaces de ejecutar esas tareas.
+
+    </div>
+  `;
+
+
+  document.getElementById(
+    "clusterView"
+  ).innerHTML = html;
+
+}
+
+
+/* =========================================================
+   VISIBILIDAD DE ETAPAS
+========================================================= */
+
+function reveal(
+  id,
+  visible,
+  current = false
+) {
+
+  const el =
+    document.getElementById(id);
+
+  if (!el) return;
+
+  el.classList.toggle(
+    "stage-hidden",
+    !visible
+  );
+
+  el.classList.toggle(
+    "stage-visible",
+    visible
+  );
+
+  el.classList.toggle(
+    "current-stage",
+    current
+  );
+
+}
+
+
+/* =========================================================
+   RENDER PRINCIPAL
+========================================================= */
+
+function render() {
+
+  const splits = splitData();
+
+  const mapped =
+    mapData(splits);
+
+  const groups =
+    shuffle(mapped);
+
+  const partitions =
+    partitionGroups(groups);
+
+  const reduced =
+    reducePartitions(partitions);
+
+
+  /* CONTADORES */
+
+  document.getElementById(
+    "nodesValue"
+  ).textContent = nodeCount;
+
+  document.getElementById(
+    "mappersValue"
+  ).textContent = mapperCount;
+
+  document.getElementById(
+    "reducersValue"
+  ).textContent = reducerCount;
+
+
+  /* EXPLICACIÓN */
+
+  document.getElementById(
+    "explanation"
+  ).innerHTML = `
+
+    <h2>
+
+      <span class="step-number">
+        ${phase + 1}
+      </span>
+
+      ${phases[phase].title}
+
+    </h2>
+
+    <p>
+      ${phases[phase].text}
+    </p>
+
+  `;
+
+
+  document.getElementById(
+    "keyIdea"
+  ).textContent =
+    phases[phase].idea;
+
+
+  document.getElementById(
+    "formula"
+  ).textContent =
+    phases[phase].formula;
+
+
+  /* SIDEBAR */
+
+  document.getElementById(
+    "phasebar"
+  ).innerHTML =
+
+    phases.map(
+      (p, i) => `
+
+        <div
+          class="phase
+          ${i === phase ? "active" : ""}
+          ${i < phase ? "done" : ""}"
+        >
+
+          ${
+            i < phase
+              ? "✓ "
+              : ""
+          }
+
+          ${i + 1}.
+          ${p.name}
+
+        </div>
+
+      `
+    ).join("");
+
+
+  /* MARCADOR */
+
+  document.getElementById(
+    "currentStageMarker"
+  ).textContent =
+    `Etapa ${phase + 1} de 6 · ${phases[phase].name}`;
+
+
+  /* CLUSTER */
+
+  renderCluster();
+
+
+  /* =====================================================
+     ETAPA 1 — ENTRADA
+  ===================================================== */
+
+  document.getElementById(
+    "inputStage"
+  ).innerHTML = `
+
+    <div class="stage-wide">
+
+      <div class="stage-title-row">
+
+        <div class="stage-title">
+          1. Entrada
+        </div>
+
+        <span class="tag">
+          12 registros
+        </span>
+
+      </div>
+
+
+      <div class="stage-sub">
+
+        El conjunto completo antes de comenzar
+        el procesamiento.
+
+      </div>
+
+
+      <div class="results">
+
+        ${DATA
+          .map(
+            ([c, t]) =>
+              recordHTML(c, t)
+          )
+          .join("")
+        }
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  /* =====================================================
+     ETAPA 2 — SPLIT
+  ===================================================== */
+
+  document.getElementById(
+    "splitStage"
+  ).innerHTML = `
+
+    <div class="stage-wide">
+
+      <div class="stage-title-row">
+
+        <div class="stage-title">
+          2. División
+        </div>
+
+        <span class="tag">
+          ${mapperCount} Input Splits
+        </span>
+
+      </div>
+
+
+      <div class="stage-sub">
+
+        La entrada se divide en fragmentos
+        que serán procesados por las tareas Mapper.
+
+      </div>
+
+
+      <div class="split-grid">
+
+        ${splits
+          .map(
+            (s, i) => `
+
+              <div class="split-card">
+
+                <h4>
+                  Input Split ${i + 1}
+                  → M${i + 1}
+                </h4>
+
+                ${s
+                  .map(
+                    ([c, t]) => `
+
+                      <div class="split-record">
+
+                        &lt;
+                        ${esc(c)},
+                        ${t}°C
+                        &gt;
+
+                      </div>
+
+                    `
+                  )
+                  .join("")
+                }
+
+              </div>
+
+            `
+          )
+          .join("")
+        }
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  /* =====================================================
+     ETAPA 3 — MAP
+  ===================================================== */
+
+  document.getElementById(
+    "mapStage"
+  ).innerHTML = `
+
+    <div class="stage-wide">
+
+      <div class="stage-title-row">
+
+        <div class="stage-title">
+          3. Map
+        </div>
+
+        <span class="tag">
+          ${mapperCount} tareas Mapper
+        </span>
+
+      </div>
+
+
+      <div class="stage-sub">
+
+        Cada tarea procesa su Input Split
+        y produce pares clave/valor.
+
+      </div>
+
+
+      <div class="mapper-grid">
+
+        ${mapped
+          .map(
+            (m, i) => `
+
+              <div class="mini-task mapper">
+
+                <h4>
+                  M${i + 1}
+                  —
+                  Nodo ${(i % nodeCount) + 1}
+                </h4>
+
+                ${m
+                  .map(
+                    ({ key, value }) =>
+                      kvHTML(
+                        key,
+                        value
+                      )
+                  )
+                  .join("")
+                }
+
+              </div>
+
+            `
+          )
+          .join("")
+        }
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  /* =====================================================
+     ETAPA 4 — SHUFFLE
+  ===================================================== */
+
+  document.getElementById(
+    "shuffleStage"
+  ).innerHTML = `
+
+    <div class="stage-wide">
+
+      <div class="stage-title-row">
+
+        <div class="stage-title">
+          4. Shuffle
+        </div>
+
+        <span class="tag">
+          ${reducerCount} particiones
+        </span>
+
+      </div>
+
+
+      <div class="stage-sub">
+
+        Los pares con la misma clave se agrupan
+        y se envían al mismo Reducer.
+
+      </div>
+
+
+      <div class="shuffle-grid">
+
+        ${Object.entries(groups)
+          .map(
+            ([key, values]) => {
+
+              const ri =
+                partitions.findIndex(
+                  p =>
+                    p.some(
+                      x =>
+                        x[0] === key
+                    )
+                );
+
+              return `
+
+                <div class="shuffle-group">
+
+                  <div class="key">
+                    ${esc(key)}
+                  </div>
+
+                  <div class="arrowline">
+
+                    ↓
+                    →
+                    R${ri + 1}
+                    ·
+                    Nodo ${(ri % nodeCount) + 1}
+                    ↓
+
+                  </div>
+
+                  <div
+                    style="
+                      font-family:monospace;
+                      color:var(--yellow)
+                    "
+                  >
+                    [${values.join(", ")}]
+                  </div>
+
+                </div>
+
+              `;
+
+            }
+          )
+          .join("")
+        }
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  /* =====================================================
+     ETAPA 5 — REDUCE
+  ===================================================== */
+
+  document.getElementById(
+    "reduceStage"
+  ).innerHTML = `
+
+    <div class="stage-wide">
+
+      <div class="stage-title-row">
+
+        <div class="stage-title">
+          5. Reduce
+        </div>
+
+        <span class="tag">
+          ${reducerCount} tareas Reducer
+        </span>
+
+      </div>
+
+
+      <div class="stage-sub">
+
+        Cada Reducer procesa sus grupos
+        y aplica <code>max()</code>.
+
+      </div>
+
+
+      <div class="reducer-grid">
+
+        ${partitions
+          .map(
+            (p, i) => `
+
+              <div class="mini-task reducer">
+
+                <h4>
+                  R${i + 1}
+                  —
+                  Nodo ${(i % nodeCount) + 1}
+                </h4>
+
+
+                ${
+                  p.length
+
+                    ? p
+                        .map(
+                          ([key, values]) => `
+
+                            <div class="kv">
+
+                              <span class="key">
+                                ${esc(key)}
+                              </span>
+
+                              →
+
+                              <span class="value">
+                                [${values.join(", ")}]
+                              </span>
+
+                            </div>
+
+
+                            <div class="small">
+
+                              max(${values.join(", ")})
+
+                              →
+
+                              <b
+                                style="
+                                  color:var(--yellow)
+                                "
+                              >
+                                ${Math.max(...values)}°C
+                              </b>
+
+                            </div>
+
+                          `
+                        )
+                        .join("")
+
+                    : `
+                      <div class="small">
+                        Esta partición no recibió claves.
+                      </div>
+                    `
+                }
+
+              </div>
+
+            `
+          )
+          .join("")
+        }
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  /* =====================================================
+     ETAPA 6 — RESULTADO
+  ===================================================== */
+
+  document.getElementById(
+    "outputStage"
+  ).innerHTML = `
+
+    <div class="stage-wide">
+
+      <div class="stage-title-row">
+
+        <div class="stage-title">
+          6. Resultado
+        </div>
+
+        <span class="tag">
+          salida de los Reducers
+        </span>
+
+      </div>
+
+
+      <div class="stage-sub">
+
+        Una temperatura máxima por ciudad.
+
+      </div>
+
+
+      <div class="results">
+
+        ${reduced
+          .map(
+            ([city, temp]) => `
+
+              <div class="result">
+
+                <div class="city">
+                  ${esc(city)}
+                </div>
+
+                <div class="temp">
+                  ${temp}°C
+                </div>
+
+              </div>
+
+            `
+          )
+          .join("")
+        }
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  /* =====================================================
+     MOSTRAR ETAPAS
+  ===================================================== */
+
+  const ids = [
+    "inputStage",
+    "splitStage",
+    "mapStage",
+    "shuffleStage",
+    "reduceStage",
+    "outputStage"
+  ];
+
+
+  ids.forEach(
+    (id, i) => {
+
+      reveal(
+        id,
+        i <= phase,
+        i === phase
+      );
+
+    }
+  );
+
+
+  /* CONECTORES */
+
+  for (
+    let i = 1;
+    i <= 5;
+    i++
+  ) {
+
+    reveal(
+      "connector" + i,
+      i <= phase
+    );
+
+  }
+
+
+  /* BOTONES */
+
+  document.getElementById(
+    "prevBtn"
+  ).disabled = phase === 0;
+
+
+  document.getElementById(
+    "nextBtn"
+  ).disabled = phase === 5;
+
+}
+
+
+/* =========================================================
+   CAMBIO DE ETAPA
+========================================================= */
+
+function scrollToStage(target) {
+
+  if (!target) return;
+
+  const controls =
+    document.querySelector(".controls");
+
+  const controlsRect =
+    controls.getBoundingClientRect();
+
+  const targetRect =
+    target.getBoundingClientRect();
+
+  /*
+   * Espacio que realmente ocupa la barra sticky.
+   */
+  const topSafeArea =
+    controlsRect.bottom + 24;
+
+  /*
+   * Dejamos un pequeño margen inferior.
+   */
+  const bottomSafeArea =
+    window.innerHeight - 40;
+
+
+  /*
+   * Si la etapa ya está cómodamente visible,
+   * no movemos absolutamente nada.
+   */
+  if (
+    targetRect.top >= topSafeArea &&
+    targetRect.bottom <= bottomSafeArea
+  ) {
+    return;
+  }
+
+
+  /*
+   * Si la etapa está por encima de la zona visible,
+   * la colocamos justo debajo de los cont
+   */
+  if (targetRect.top < topSafeArea) {
+
+    const distance =
+      targetRect.top - topSafeArea;
+
+    window.scrollBy({
+      top: distance,
+      behavior: "smooth"
+    });
+
+    return;
+  }
+
+
+  /*
+   * Si está por debajo del viewport,
+   * intentamos mostrarla completa sin hacer
+   * un salto innecesariamente grande.
+   */
+  if (targetRect.bottom > bottomSafeArea) {
+
+    const distance =
+      targetRect.bottom - bottomSafeArea;
+
+    window.scrollBy({
+      top: distance,
+      behavior: "smooth"
+    });
+
+  }
+
+}
+
+function setPhase(p) {
+
+  const oldPhase = phase;
+
+  phase =
+    Math.max(
+      0,
+      Math.min(5, p)
+    );
+
+
+  render();
+
+
+  /* =========================================
+     NAVEGACIÓN DIDÁCTICA
+  ========================================= */
+        if (phase !== oldPhase) {
+
+            const ids = [
+                "inputStage",
+                "splitStage",
+                "mapStage",
+                "shuffleStage",
+                "reduceStage",
+                "outputStage"
+            ];
+
+            const target =
+                document.getElementById(
+                    ids[phase]
+                );
+
+
+            if (target) {
+
+                setTimeout(() => {
+
+                    scrollToStage(target);
+
+                    target.classList.remove(
+                        "stage-focus"
+                    );
+
+                    void target.offsetWidth;
+
+                    target.classList.add(
+                        "stage-focus"
+                    );
+
+
+                    setTimeout(() => {
+
+                        target.classList.remove(
+                            "stage-focus"
+                        );
+
+                    }, 1200);
+
+                }, 80);
+
+            }
+
+        }
+  
+
+}
+
+
+/* =========================================================
+   CONTROLES SLIDERS
+========================================================= */
+
+document.getElementById(
+  "nodes"
+).addEventListener(
+  "input",
+  e => {
+
+    nodeCount =
+      Number(e.target.value);
+
+    render();
+
+  }
+);
+
+
+document.getElementById(
+  "mappers"
+).addEventListener(
+  "input",
+  e => {
+
+    mapperCount =
+      Number(e.target.value);
+
+    /*
+     * Reiniciamos la etapa para evitar
+     * inconsistencias visuales cuando cambia
+     * la estructura de los datos.
+     */
+
+    phase = Math.min(
+      phase,
+      5
+    );
+
+    render();
+
+  }
+);
+
+
+document.getElementById(
+  "reducers"
+).addEventListener(
+  "input",
+  e => {
+
+    reducerCount =
+      Number(e.target.value);
+
+    render();
+
+  }
+);
+
+
+/* =========================================================
+   BOTÓN ANTERIOR
+========================================================= */
+
+document.getElementById(
+  "prevBtn"
+).onclick = () => {
+
+  setPhase(
+    phase - 1
+  );
+
+};
+
+
+/* =========================================================
+   BOTÓN SIGUIENTE
+========================================================= */
+
+document.getElementById(
+  "nextBtn"
+).onclick = () => {
+
+  setPhase(
+    phase + 1
+  );
+
+};
+
+
+/* =========================================================
+   REINICIAR
+========================================================= */
+
+document.getElementById(
+  "resetBtn"
+).onclick = () => {
+
+  if (timer) {
+
+    clearInterval(timer);
+
+    timer = null;
+
+  }
+
+
+  nodeCount = 3;
+  mapperCount = 4;
+  reducerCount = 2;
+  phase = 0;
+
+
+  document.getElementById(
+    "nodes"
+  ).value = 3;
+
+
+  document.getElementById(
+    "mappers"
+  ).value = 4;
+
+
+  document.getElementById(
+    "reducers"
+  ).value = 2;
+
+
+  document.getElementById(
+    "playBtn"
+  ).textContent =
+    "▶ Ejecutar todo";
+
+
+  render();
+
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
+
+};
+
+
+/* =========================================================
+   EJECUTAR TODO
+========================================================= */
+
+document.getElementById(
+  "playBtn"
+).onclick = () => {
+
+
+  /* Si ya está ejecutándose,
+     pausamos. */
+
+  if (timer) {
+
+    clearInterval(timer);
+
+    timer = null;
+
+    document.getElementById(
+      "playBtn"
+    ).textContent =
+      "▶ Ejecutar todo";
+
+    return;
+
+  }
+
+
+  /* Si terminó, comenzamos
+     nuevamente desde el principio. */
+
+  if (phase === 5) {
+
+    phase = 0;
+
+    render();
+
+  }
+
+
+  document.getElementById(
+    "playBtn"
+  ).textContent =
+    "⏸ Pausar";
+
+
+  /*
+   * Cada 2.6 segundos avanza
+   * automáticamente.
+   */
+
+  timer = setInterval(() => {
+
+
+    if (phase >= 5) {
+
+      clearInterval(timer);
+
+      timer = null;
+
+      document.getElementById(
+        "playBtn"
+      ).textContent =
+        "▶ Ejecutar todo";
+
+      return;
+
+    }
+
+
+    setPhase(
+      phase + 1
+    );
+
+
+  }, 2600);
+
+};
+
+
+/* =========================================================
+   INICIALIZACIÓN
+========================================================= */
+
+renderDataset();
+
+render();
+
+</script>
+
+</body>
+</html>
+
