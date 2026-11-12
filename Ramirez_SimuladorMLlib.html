@@ -1,0 +1,3680 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador de Aprendizaje Supervisado: Regresión con Apache Spark MLlib</title>
+  <style>
+
+/* ==========================================================================
+   DESIGN TOKENS & RESET
+   ========================================================================== */
+:root {
+  --bg-main: #090d16;
+  --bg-surface: #0f172a;
+  --bg-card: #151e34;
+  --bg-card-hover: #1c2742;
+  --bg-input: #0a0f1d;
+  --border-subtle: #1e293b;
+  --border-medium: #2c3a52;
+  --border-highlight: #43557a;
+  
+  --primary: #6366f1;
+  --primary-light: #818cf8;
+  --primary-glow: rgba(99, 102, 241, 0.25);
+  
+  --cyan: #06b6d4;
+  --cyan-light: #22d3ee;
+  --cyan-glow: rgba(6, 182, 212, 0.25);
+  
+  --emerald: #10b981;
+  --emerald-light: #34d399;
+  
+  --amber: #f59e0b;
+  --amber-light: #fbbf24;
+  
+  --rose: #f43f5e;
+  --rose-light: #fb7185;
+  
+  --purple: #a855f7;
+  --purple-light: #c084fc;
+  
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  
+  --shadow-sm: 0 2px 6px rgba(0,0,0,0.3);
+  --shadow-md: 0 8px 24px rgba(0,0,0,0.4);
+  --shadow-lg: 0 16px 40px rgba(0,0,0,0.5);
+  --shadow-glow: 0 0 25px rgba(99, 102, 241, 0.2);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 15px;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--bg-main);
+  background-image: 
+    radial-gradient(circle at 15% 10%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 85% 60%, rgba(6, 182, 212, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 50% 90%, rgba(168, 85, 247, 0.08) 0%, transparent 50%);
+  color: var(--text-main);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-main);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Layout Container */
+.container {
+  width: min(1360px, 94vw);
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* Top Sticky Navigation */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(9, 13, 22, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0.75rem 0;
+}
+.navbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--text-main);
+  text-decoration: none;
+}
+.brand-icon {
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(135deg, var(--primary), var(--cyan));
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 14px var(--primary-glow);
+  color: #fff;
+}
+.brand-text span {
+  color: var(--cyan-light);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  list-style: none;
+}
+.nav-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+.nav-link:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+}
+.nav-cta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Header & Membrete */
+.header-hero {
+  padding: 2.5rem 0 2rem;
+  border-bottom: 1px solid var(--border-subtle);
+  position: relative;
+}
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.85rem;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 9999px;
+  color: var(--primary-light);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+.badge-pill .dot {
+  width: 6px;
+  height: 6px;
+  background: var(--primary-light);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--primary);
+}
+
+.hero-title {
+  font-size: clamp(1.8rem, 3.4vw, 2.75rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.75rem;
+  background: linear-gradient(135deg, #ffffff 40%, var(--cyan-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero-subtitle {
+  font-size: clamp(1rem, 1.8vw, 1.25rem);
+  color: var(--text-muted);
+  max-width: 820px;
+  margin-bottom: 1.75rem;
+  font-style: italic;
+}
+
+/* Membrete Grid */
+.academic-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1.25rem;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+.academic-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary), var(--cyan), var(--purple));
+}
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.meta-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.meta-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+.meta-badge {
+  display: inline-block;
+  background: rgba(6, 182, 212, 0.15);
+  color: var(--cyan-light);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-family: ui-monospace, monospace;
+}
+
+.system-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.sys-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+.sys-badge svg {
+  width: 14px;
+  height: 14px;
+  color: var(--primary-light);
+}
+
+/* Sections */
+section {
+  padding: 3rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.section-header {
+  margin-bottom: 2rem;
+}
+.section-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--cyan-light);
+  margin-bottom: 0.4rem;
+}
+.section-title {
+  font-size: clamp(1.4rem, 2.2vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-main);
+  margin-bottom: 0.5rem;
+}
+.section-desc {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 800px;
+}
+
+/* Objectives Grid */
+.objectives-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+.obj-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+  position: relative;
+}
+.obj-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-highlight);
+}
+.obj-card-main {
+  grid-column: 1 / -1;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(6, 182, 212, 0.05));
+  border-color: rgba(99, 102, 241, 0.3);
+}
+.obj-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+.obj-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--primary-light);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.obj-icon.cyan {
+  background: rgba(6, 182, 212, 0.15);
+  color: var(--cyan-light);
+}
+.obj-icon.emerald {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--emerald-light);
+}
+.obj-icon.amber {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--amber-light);
+}
+.obj-icon.purple {
+  background: rgba(168, 85, 247, 0.15);
+  color: var(--purple-light);
+}
+.obj-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+.obj-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Callout Box */
+.callout {
+  background: rgba(15, 23, 42, 0.7);
+  border-left: 3px solid var(--cyan);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 1.1rem 1.35rem;
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+.callout.warning {
+  border-left-color: var(--amber);
+  background: rgba(245, 158, 11, 0.06);
+}
+.callout-icon {
+  flex-shrink: 0;
+  color: var(--cyan);
+  margin-top: 0.15rem;
+}
+.callout.warning .callout-icon {
+  color: var(--amber);
+}
+
+/* Theory Grid & Formula Cards */
+.theory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 1.5rem;
+}
+.theory-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.theory-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.theory-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+.theory-badge {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--primary-light);
+}
+.formula-display {
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  text-align: center;
+  font-family: ui-monospace, "Cascadia Code", "Fira Code", monospace;
+  font-size: 1.1rem;
+  color: var(--cyan-light);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+}
+.formula-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.var-breakdown {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.4rem 0.75rem;
+  font-size: 0.82rem;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+.var-symbol {
+  font-family: monospace;
+  font-weight: 700;
+  color: var(--amber-light);
+}
+
+/* Metric Theory Pill */
+.metric-theory-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+}
+.metric-theory-name {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 0.3rem;
+  color: var(--text-main);
+}
+.metric-formula-mini {
+  font-family: monospace;
+  font-size: 0.82rem;
+  color: var(--purple-light);
+}
+
+/* ==========================================================================
+   SIMULATOR WORKBENCH
+   ========================================================================== */
+.simulator-layout {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+@media (max-width: 1080px) {
+  .simulator-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Control Panel */
+.control-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.panel-section-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  color: var(--primary-light);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Form Controls */
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+}
+.control-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+  color: var(--text-main);
+  font-weight: 500;
+}
+.control-val-badge {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--cyan-light);
+  background: var(--bg-input);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-medium);
+  min-width: 48px;
+  text-align: right;
+}
+.control-help {
+  font-size: 0.73rem;
+  color: var(--text-dim);
+}
+
+/* Select */
+.select-input {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.select-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+/* Sliders */
+.slider-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: var(--border-medium);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  cursor: pointer;
+  border: 2px solid var(--bg-main);
+  box-shadow: 0 0 8px var(--primary-glow);
+  transition: transform 0.1s, background-color 0.2s;
+}
+.slider-input::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  background: #ffffff;
+}
+.slider-input:focus {
+  background: var(--border-highlight);
+}
+
+/* Checkboxes */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.checkbox-row input[type="checkbox"] {
+  accent-color: var(--primary);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* Action Buttons */
+.btn-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  text-decoration: none;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), #4f46e5);
+  color: #ffffff;
+  box-shadow: 0 4px 14px var(--primary-glow);
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--primary-light), var(--primary));
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px var(--primary-glow);
+}
+.btn-secondary {
+  background: var(--bg-card);
+  border-color: var(--border-medium);
+  color: var(--text-main);
+}
+.btn-secondary:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-highlight);
+}
+.btn-full {
+  grid-column: 1 / -1;
+}
+
+/* Visualization Stage */
+.stage-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Stage Header with Tabs */
+.stage-header {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  border-bottom: none;
+}
+.chart-tabs {
+  display: flex;
+  gap: 0.35rem;
+  background: var(--bg-input);
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+.chart-tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.4rem 0.85rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.chart-tab-btn:hover {
+  color: var(--text-main);
+}
+.chart-tab-btn.active {
+  background: var(--bg-card);
+  color: var(--cyan-light);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.chart-toggles {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+.toggle-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.toggle-item input {
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.toggle-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* Canvas Area */
+.canvas-wrapper {
+  background: #0b1120;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  padding: 1rem;
+  position: relative;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+canvas {
+  display: block;
+  width: 100%;
+  height: 480px;
+  border-radius: var(--radius-sm);
+  cursor: crosshair;
+}
+
+/* Floating Badges inside Canvas */
+.equation-overlay {
+  position: absolute;
+  top: 1.5rem;
+  left: 2rem;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.85rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+  color: var(--purple-light);
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.equation-overlay .pulse {
+  width: 8px;
+  height: 8px;
+  background: var(--purple-light);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--purple);
+}
+
+/* Floating Hover Tooltip */
+.canvas-tooltip {
+  position: absolute;
+  display: none;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--cyan);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.78rem;
+  color: var(--text-main);
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+  z-index: 50;
+  white-space: nowrap;
+  transform: translate(12px, -50%);
+}
+
+/* Inference Bar */
+.inference-bar {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.inference-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+.inference-input {
+  width: 100px;
+  padding: 0.4rem 0.65rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--cyan-light);
+  font-family: monospace;
+  font-size: 0.9rem;
+  outline: none;
+}
+.inference-result {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.inference-result strong {
+  color: var(--emerald-light);
+  font-family: monospace;
+  font-size: 1.05rem;
+}
+
+/* Results & Metrics Dashboard */
+.metrics-dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+.metric-box {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s;
+}
+.metric-box:hover {
+  border-color: var(--border-highlight);
+}
+.metric-box.accent-purple {
+  border-top: 3px solid var(--purple);
+}
+.metric-box.accent-cyan {
+  border-top: 3px solid var(--cyan);
+}
+.metric-box.accent-emerald {
+  border-top: 3px solid var(--emerald);
+}
+.metric-box.accent-amber {
+  border-top: 3px solid var(--amber);
+}
+.metric-box-title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin-bottom: 0.35rem;
+}
+.metric-box-val {
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-family: ui-monospace, monospace;
+  color: var(--text-main);
+  line-height: 1.1;
+  margin-bottom: 0.35rem;
+}
+.metric-box-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.metric-quality {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 9999px;
+  margin-top: 0.35rem;
+  width: fit-content;
+}
+.quality-excellent {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--emerald-light);
+}
+.quality-good {
+  background: rgba(6, 182, 212, 0.15);
+  color: var(--cyan-light);
+}
+.quality-moderate {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--amber-light);
+}
+.quality-poor {
+  background: rgba(244, 63, 94, 0.15);
+  color: var(--rose-light);
+}
+
+/* Parameters Card */
+.params-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+}
+.params-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+.params-table th, .params-table td {
+  padding: 0.6rem 0.85rem;
+  text-align: left;
+}
+.params-table th {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.params-table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-family: ui-monospace, monospace;
+}
+.params-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Diagnosis Panel */
+.diagnosis-panel {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(21, 30, 52, 0.98));
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+  box-shadow: var(--shadow-md);
+  position: relative;
+}
+.diagnosis-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 0.75rem;
+}
+.diagnosis-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--primary-light);
+  display: grid;
+  place-items: center;
+}
+.diagnosis-text {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.diagnosis-text p {
+  margin-bottom: 0.5rem;
+}
+.diagnosis-text p:last-child {
+  margin-bottom: 0;
+}
+
+/* ==========================================================================
+   BENCHMARK & WORKLOAD SCALING
+   ========================================================================== */
+.benchmark-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+@media (max-width: 960px) {
+  .benchmark-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.benchmark-controls-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-input);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+.progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--primary), var(--cyan));
+  transition: width 0.25s ease;
+}
+.benchmark-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin-top: 0.5rem;
+}
+.benchmark-results-table th, .benchmark-results-table td {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+}
+.benchmark-results-table th {
+  background: var(--bg-input);
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.benchmark-results-table td {
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: monospace;
+}
+.benchmark-chart-box {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-md);
+}
+.benchmark-canvas {
+  width: 100%;
+  height: 340px;
+}
+
+/* Distributed Architecture Explainer */
+.distributed-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Code Snippet Box */
+.code-box {
+  background: #0b0f19;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  position: relative;
+  margin-top: 1.5rem;
+}
+.code-header {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.5rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.btn-copy {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-copy:hover {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+pre {
+  margin: 0;
+  padding: 1.25rem;
+  overflow-x: auto;
+  font-family: ui-monospace, "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: #e2e8f0;
+}
+.keyword { color: #f472b6; }
+.func { color: #60a5fa; }
+.string { color: #34d399; }
+.comment { color: #64748b; font-style: italic; }
+.number { color: #fbbf24; }
+
+/* Interactive Quiz Section */
+.quiz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+.quiz-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.quiz-q-num {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  color: var(--cyan-light);
+  font-weight: 700;
+}
+.quiz-question {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+.quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.quiz-opt-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.85rem;
+  text-align: left;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.quiz-opt-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-main);
+  border-color: var(--border-highlight);
+}
+.quiz-opt-btn.correct {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: var(--emerald);
+  color: var(--emerald-light);
+  font-weight: 600;
+}
+.quiz-opt-btn.incorrect {
+  background: rgba(244, 63, 94, 0.15);
+  border-color: var(--rose);
+  color: var(--rose-light);
+}
+.quiz-feedback {
+  font-size: 0.78rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  display: none;
+}
+.quiz-feedback.show {
+  display: block;
+}
+
+/* Footer & Final Membrete */
+footer {
+  background: #060911;
+  border-top: 1px solid var(--border-subtle);
+  padding: 3rem 0 2rem;
+}
+.footer-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.footer-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 1.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .nav-links {
+    display: none;
+  }
+  .theory-grid {
+    grid-template-columns: 1fr;
+  }
+  .stage-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  canvas {
+    height: 380px;
+  }
+}
+
+/* Print Styles */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .navbar, .btn, .slider-input, .select-input, .chart-tabs, .chart-toggles {
+    display: none !important;
+  }
+  .container {
+    width: 100% !important;
+    padding: 0 !important;
+  }
+  .theory-card, .obj-card, .metric-box, .params-card, .diagnosis-panel {
+    border: 1px solid #ccc !important;
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+  }
+}
+
+  </style>
+</head>
+<body>
+
+  <!-- ================= TOP NAVIGATION ================= -->
+  <nav class="navbar">
+    <div class="container navbar-inner">
+      <a href="#inicio" class="brand">
+        <div class="brand-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div class="brand-text">Spark <span>MLlib</span> Regresión</div>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#inicio" class="nav-link">Inicio</a></li>
+        <li><a href="#objetivos" class="nav-link">Objetivos</a></li>
+        <li><a href="#teoria" class="nav-link">Fundamentos</a></li>
+        <li><a href="#simulador" class="nav-link">Simulador</a></li>
+        <li><a href="#cargas" class="nav-link">Experimentos de Carga</a></li>
+        <li><a href="#spark" class="nav-link">Spark MLlib</a></li>
+        <li><a href="#quiz" class="nav-link">Autoevaluación</a></li>
+      </ul>
+      <div class="nav-cta">
+        <a href="#simulador" class="btn btn-primary" style="padding: 0.4rem 0.85rem; font-size: 0.8rem;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          Simulador
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ================= HEADER HERO & MEMBRETE ================= -->
+  <header id="inicio" class="header-hero">
+    <div class="container">
+      <div class="badge-pill">
+        <span class="dot"></span>
+        Procesamiento de Datos a Gran Escala &bull; Apache Spark MLlib
+      </div>
+
+      <h1 class="hero-title">
+        Simulador de Aprendizaje Supervisado: Regresión con Apache Spark MLlib
+      </h1>
+      <p class="hero-subtitle">
+        Exploración interactiva del entrenamiento, configuración y evaluación de modelos de regresión.
+      </p>
+
+      <!-- Membrete Académico Obligatorio -->
+      <div class="academic-card">
+        <div class="meta-item">
+          <span class="meta-label">Autor</span>
+          <span class="meta-value">Lorenzo Ramirez Calderon</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">ID Estudiante</span>
+          <span class="meta-value"><span class="meta-badge">20550074</span></span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Programa</span>
+          <span class="meta-value">Ingeniería de Sistemas</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Docente</span>
+          <span class="meta-value">John Jairo Corredor</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Asignatura</span>
+          <span class="meta-value">Procesamiento de Datos a Gran Escala</span>
+        </div>
+      </div>
+
+      <div class="system-badges">
+        <span class="sys-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Mínimos Cuadrados Ordinarios (OLS)
+        </span>
+        <span class="sys-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Visualización Dinámica Canvas HiDPI
+        </span>
+        <span class="sys-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6Z"/></svg>
+          Pruebas de Carga 100 a 50.000 Registros
+        </span>
+        <span class="sys-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>
+          Arquitectura Distribuida Spark MLlib
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= OBJETIVOS Y CONTEXTO ================= -->
+  <section id="objetivos">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6Z"/></svg>
+          Propósito Académico
+        </span>
+        <h2 class="section-title">Objetivos y Contexto del Simulador</h2>
+        <p class="section-desc">
+          Este entorno pedagógico permite vivenciar la teoría matemática del aprendizaje supervisado y contrastar el procesamiento local con el modelo de ejecución masiva distribuida de Apache Spark MLlib.
+        </p>
+      </div>
+
+      <div class="objectives-grid">
+        <!-- Objetivo General -->
+        <div class="obj-card obj-card-main">
+          <div class="obj-header">
+            <div class="obj-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+            </div>
+            <h3 class="obj-title">Objetivo General</h3>
+          </div>
+          <p class="obj-text" style="font-size: 0.95rem;">
+            Comprender el funcionamiento del aprendizaje supervisado mediante regresión, experimentando con la configuración, entrenamiento y evaluación de modelos predictivos inspirados en <strong>Apache Spark MLlib</strong>.
+          </p>
+        </div>
+
+        <!-- 6 Objetivos Específicos -->
+        <div class="obj-card">
+          <div class="obj-header">
+            <div class="obj-icon cyan">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            </div>
+            <h4 class="obj-title">1. Aprendizaje Supervisado</h4>
+          </div>
+          <p class="obj-text">Comprender qué es el aprendizaje supervisado y cómo una función predictiva se optimiza a partir de datos etiquetados (pares X e Y).</p>
+        </div>
+
+        <div class="obj-card">
+          <div class="obj-header">
+            <div class="obj-icon emerald">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            </div>
+            <h4 class="obj-title">2. Características de la Regresión</h4>
+          </div>
+          <p class="obj-text">Identificar las características fundamentales de la regresión matemática orientada a predecir valores numéricos continuos.</p>
+        </div>
+
+        <div class="obj-card">
+          <div class="obj-header">
+            <div class="obj-icon amber">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <h4 class="obj-title">3. Dependencia entre Variables</h4>
+          </div>
+          <p class="obj-text">Entender la relación matemática entre variables predictoras o independientes (X) y la variable objetivo o dependiente (Y).</p>
+        </div>
+
+        <div class="obj-card">
+          <div class="obj-header">
+            <div class="obj-icon purple">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
+            <h4 class="obj-title">4. Entrenamiento Interactivo</h4>
+          </div>
+          <p class="obj-text">Experimentar activamente con el ajuste de parámetros por mínimos cuadrados ordinarios (OLS) y penalización de regularización.</p>
+        </div>
+
+        <div class="obj-card">
+          <div class="obj-header">
+            <div class="obj-icon cyan">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <h4 class="obj-title">5. Carga y Rendimiento</h4>
+          </div>
+          <p class="obj-text">Analizar cómo la volumetría de datos (de 100 a 50.000 registros), el ruido aleatorio y los outliers afectan la estabilidad del modelo.</p>
+        </div>
+
+        <div class="obj-card">
+          <div class="obj-header">
+            <div class="obj-icon emerald">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </div>
+            <h4 class="obj-title">6. Métricas de Evaluación</h4>
+          </div>
+          <p class="obj-text">Interpretar rigurosamente las métricas de rendimiento (RMSE, MSE, MAE, R²) para contrastar generalización entre entrenamiento y prueba.</p>
+        </div>
+      </div>
+
+      <!-- Contexto Spark & Aclaración Técnica Obligatoria -->
+      <div class="callout warning">
+        <div class="callout-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div>
+          <strong style="color: var(--amber-light);">Contexto y Aclaración de Entorno de Ejecución:</strong><br>
+          <strong>Apache Spark MLlib</strong> es una biblioteca líder en la industria para Machine Learning a gran escala, construida para operar sobre clústeres distribuidos mediante particionado de datos en memoria (RDDs y DataFrames).<br>
+          <em>Este simulador implementa localmente en JavaScript puro (Vanilla JS) los principios matemáticos exactos de la regresión lineal (Mínimos Cuadrados Ordinarios) y corre en el hilo del navegador.</em> El tiempo reportado mide exclusivamente el cómputo del motor V8 local, permitiendo al estudiante comprender la matemática fundamental antes de desplegar flujos a clústeres masivos de Spark.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PARTE DIDÁCTICA Y CONCEPTUAL ================= -->
+  <section id="teoria">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Fundamentos Didácticos
+        </span>
+        <h2 class="section-title">Marco Teórico y Matemáticas de la Regresión</h2>
+        <p class="section-desc">
+          Conceptos clave del aprendizaje supervisado continuo, derivación de parámetros, división de conjuntos y métricas de error.
+        </p>
+      </div>
+
+      <div class="theory-grid">
+        <!-- Tarjeta 1: Regresión vs Clasificación -->
+        <div class="theory-card">
+          <div class="theory-card-header">
+            <h3 class="theory-title">1. ¿Qué es la Regresión?</h3>
+            <span class="theory-badge">Supervisado</span>
+          </div>
+          <p class="formula-desc">
+            El aprendizaje supervisado utiliza ejemplos históricos anotados $(x_i, y_i)$ para aprender una función predictiva $f(x) pprox y$.
+          </p>
+          <div class="var-breakdown">
+            <span class="var-symbol">Regresión:</span>
+            <span>Predice valores <strong>numéricos continuos</strong> (ej. precios, temperaturas, tiempo de ejecución, consumo eléctrico).</span>
+            <span class="var-symbol">Clasificación:</span>
+            <span>Predice etiquetas <strong>discretas o categorías</strong> (ej. spam / no spam, detección de fraude sí/no).</span>
+          </div>
+          <p class="formula-desc">
+            El objetivo de la regresión es encontrar la función que <strong>minimiza el error</strong> entre el valor real observado $y_i$ y la estimación $\hat{y}_i$.
+          </p>
+        </div>
+
+        <!-- Tarjeta 2: Ecuación de Regresión Lineal -->
+        <div class="theory-card">
+          <div class="theory-card-header">
+            <h3 class="theory-title">2. Ecuación de Regresión Lineal</h3>
+            <span class="theory-badge">Modelo Lineal</span>
+          </div>
+          <div class="formula-display">
+            y = &beta;<sub>0</sub> + &beta;<sub>1</sub>x + &epsilon;
+          </div>
+          <div class="var-breakdown">
+            <span class="var-symbol">&beta;<sub>0</sub></span>
+            <span><strong>Intercepto:</strong> valor estimado de y cuando x es exactamente 0 (punto de corte vertical).</span>
+            <span class="var-symbol">&beta;<sub>1</sub></span>
+            <span><strong>Pendiente:</strong> razón de cambio en y por cada unidad que aumenta la variable x.</span>
+            <span class="var-symbol">x</span>
+            <span><strong>Variable independiente:</strong> atributo de entrada o feature predictora.</span>
+            <span class="var-symbol">y</span>
+            <span><strong>Variable dependiente:</strong> etiqueta continua o target a predecir.</span>
+            <span class="var-symbol">&epsilon;</span>
+            <span><strong>Término de error:</strong> residuo aleatorio no explicado (ruido Gaussiano &epsilon; ~ N(0, &sigma;&sup2;)).</span>
+          </div>
+        </div>
+
+        <!-- Tarjeta 3: Mínimos Cuadrados Ordinarios (OLS) -->
+        <div class="theory-card">
+          <div class="theory-card-header">
+            <h3 class="theory-title">3. Mínimos Cuadrados (OLS)</h3>
+            <span class="theory-badge">Optimización</span>
+          </div>
+          <p class="formula-desc">
+            Buscamos minimizar la suma de residuos al cuadrado: $S(&beta;_0, &beta;_1) = \sum (y_i - (eta_0 + eta_1 x_i))^2$. Al igualar sus derivadas parciales a cero se obtiene la solución analítica exacta:
+          </p>
+          <div class="formula-display" style="font-size: 0.95rem;">
+            &beta;<sub>1</sub> = Cov(X, Y) / Var(X) = &sum;(x<sub>i</sub> - x̄)(y<sub>i</sub> - ȳ) / &sum;(x<sub>i</sub> - x̄)&sup2;<br>
+            &beta;<sub>0</sub> = ȳ - &beta;<sub>1</sub>x̄
+          </div>
+          <div class="callout" style="margin: 0; padding: 0.75rem; font-size: 0.8rem;">
+            <div>
+              <strong>En Spark MLlib:</strong> Las sumatorias (&sum;x, &sum;y, &sum;x&sup2;, &sum;xy, n) se calculan paralelamente en las particiones de datos usando un <code>treeAggregate</code> en una sola pasada $O(n)$, comunicando únicamente escalares al driver.
+            </div>
+          </div>
+        </div>
+
+        <!-- Tarjeta 4: Train / Test Split -->
+        <div class="theory-card">
+          <div class="theory-card-header">
+            <h3 class="theory-title">4. División Train / Test</h3>
+            <span class="theory-badge">Generalización</span>
+          </div>
+          <p class="formula-desc">
+            Evaluar un modelo únicamente con los datos con los que fue entrenado genera un <strong>sesgo optimista</strong> que oculta el sobreajuste (overfitting).
+          </p>
+          <div class="var-breakdown">
+            <span class="var-symbol">Train (70-80%):</span>
+            <span>Conjunto exclusivo para el aprendizaje de los coeficientes &beta;<sub>0</sub> y &beta;<sub>1</sub>.</span>
+            <span class="var-symbol">Test (20-30%):</span>
+            <span>Conjunto ciego retenido para medir el rendimiento sobre datos nunca vistos.</span>
+            <span class="var-symbol">Fuga (Leakage):</span>
+            <span>El modelo jamás debe ver las etiquetas ni estadísticas del conjunto de prueba durante su ajuste.</span>
+          </div>
+        </div>
+
+        <!-- Tarjeta 5: Métricas de Evaluación -->
+        <div class="theory-card" style="grid-column: 1 / -1;">
+          <div class="theory-card-header">
+            <h3 class="theory-title">5. Métricas Matemáticas de Evaluación</h3>
+            <span class="theory-badge">Evaluación Cuantitativa</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem;">
+            <div class="metric-theory-card">
+              <div class="metric-theory-name">
+                <span>RMSE (Root Mean Squared Error)</span>
+                <span class="metric-formula-mini">&radic;[ &sum;(y - ŷ)&sup2; / n ]</span>
+              </div>
+              <p class="formula-desc">
+                Raíz del error cuadrático medio. Está en las mismas unidades que la variable Y. Penaliza fuertemente errores grandes debido a la elevación cuadrática.
+              </p>
+            </div>
+
+            <div class="metric-theory-card">
+              <div class="metric-theory-name">
+                <span>MSE (Mean Squared Error)</span>
+                <span class="metric-formula-mini">&sum;(y - ŷ)&sup2; / n</span>
+              </div>
+              <p class="formula-desc">
+                Promedio de los residuos al cuadrado. Función de pérdida estándar en optimización convexa, pero sus unidades están elevadas al cuadrado.
+              </p>
+            </div>
+
+            <div class="metric-theory-card">
+              <div class="metric-theory-name">
+                <span>MAE (Mean Absolute Error)</span>
+                <span class="metric-formula-mini">&sum;|y - ŷ| / n</span>
+              </div>
+              <p class="formula-desc">
+                Promedio de los errores absolutos. Es mucho más <strong>robusto frente a valores atípicos (outliers)</strong> porque no magnifica los errores extremos.
+              </p>
+            </div>
+
+            <div class="metric-theory-card">
+              <div class="metric-theory-name">
+                <span>R&sup2; (Coeficiente Determinación)</span>
+                <span class="metric-formula-mini">1 - (SS<sub>res</sub> / SS<sub>tot</sub>)</span>
+              </div>
+              <p class="formula-desc">
+                Proporción de la varianza total de Y que el modelo logra explicar. 1.0 es ajuste perfecto; 0.0 equivale a predecir la media ȳ; valores negativos indican un modelo pésimo.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SIMULADOR INTERACTIVO ================= -->
+  <section id="simulador">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Laboratorio Interactivo
+        </span>
+        <h2 class="section-title">Simulador de Regresión: Configuración, Entrenamiento y Diagnóstico</h2>
+        <p class="section-desc">
+          Modifica los parámetros de generación estocástica, selecciona escenarios pedagógicos y entrena el modelo en tiempo real para observar el ajuste y diagnosticar el rendimiento.
+        </p>
+      </div>
+
+      <div class="simulator-layout">
+        <!-- ================= PANEL DE CONTROL IZQUIERDO ================= -->
+        <div class="control-panel">
+          <div>
+            <div class="panel-section-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+              Escenarios Pedagógicos
+            </div>
+            <select id="scenarioSelect" class="select-input">
+              <option value="clear">1. Relación lineal clara (bajo ruido)</option>
+              <option value="moderate" selected>2. Relación lineal con ruido moderado</option>
+              <option value="heavy">3. Relación lineal con mucho ruido</option>
+              <option value="outliers">4. Presencia de valores atípicos (outliers)</option>
+              <option value="weak">5. Relación débil o casi nula (R² &approx; 0)</option>
+              <option value="custom">6. Personalizado (ajuste libre)</option>
+            </select>
+          </div>
+
+          <div>
+            <div class="panel-section-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              Parámetros del Conjunto de Datos
+            </div>
+
+            <!-- Cantidad de registros N -->
+            <div class="control-group">
+              <div class="control-label-row">
+                <span>Registros totales (N):</span>
+                <span id="lblRecords" class="control-val-badge">300</span>
+              </div>
+              <input type="range" id="paramRecords" class="slider-input" min="30" max="2500" step="10" value="300">
+              <span class="control-help">Tamaño de la muestra sintética generada.</span>
+            </div>
+
+            <!-- Porcentaje Train / Test -->
+            <div class="control-group">
+              <div class="control-label-row">
+                <span>División Entrenamiento (Train):</span>
+                <span id="lblTrainSplit" class="control-val-badge">75%</span>
+              </div>
+              <input type="range" id="paramTrainSplit" class="slider-input" min="50" max="90" step="5" value="75">
+              <span class="control-help">El restante corresponderá al conjunto de Prueba (Test).</span>
+            </div>
+
+            <!-- Pendiente Real Beta 1 -->
+            <div class="control-group">
+              <div class="control-label-row">
+                <span>Pendiente real (&beta;<sub>1</sub>*):</span>
+                <span id="lblSlope" class="control-val-badge">2.0</span>
+              </div>
+              <input type="range" id="paramSlope" class="slider-input" min="-6.0" max="6.0" step="0.1" value="2.0">
+              <span class="control-help">Inclinación teórica subyacente de la función generadora.</span>
+            </div>
+
+            <!-- Intercepto Real Beta 0 -->
+            <div class="control-group">
+              <div class="control-label-row">
+                <span>Intercepto real (&beta;<sub>0</sub>*):</span>
+                <span id="lblIntercept" class="control-val-badge">10.0</span>
+              </div>
+              <input type="range" id="paramIntercept" class="slider-input" min="-30.0" max="30.0" step="1.0" value="10.0">
+              <span class="control-help">Valor base de y cuando x = 0.</span>
+            </div>
+
+            <!-- Nivel de Ruido Sigma -->
+            <div class="control-group">
+              <div class="control-label-row">
+                <span>Nivel de ruido (&sigma;):</span>
+                <span id="lblNoise" class="control-val-badge">8.0</span>
+              </div>
+              <input type="range" id="paramNoise" class="slider-input" min="0.0" max="40.0" step="0.5" value="8.0">
+              <span class="control-help">Desviación estándar de la perturbación Gaussiana.</span>
+            </div>
+
+            <!-- Outliers -->
+            <div class="control-group">
+              <div class="control-label-row">
+                <span>Valores atípicos (Outliers):</span>
+                <span id="lblOutliers" class="control-val-badge">0%</span>
+              </div>
+              <input type="range" id="paramOutliers" class="slider-input" min="0" max="20" step="1" value="0">
+              <span class="control-help">Porcentaje de puntos con anomalías severas.</span>
+            </div>
+
+            <!-- Regularización Ridge (L2) -->
+            <div class="control-group">
+              <div class="control-label-row">
+                <span>Regularización Ridge (&lambda;):</span>
+                <span id="lblLambda" class="control-val-badge">0.0</span>
+              </div>
+              <input type="range" id="paramLambda" class="slider-input" min="0" max="25" step="0.5" value="0.0">
+              <span class="control-help">Parámetro regParam de Spark para penalizar pendientes altas.</span>
+            </div>
+
+            <!-- Semilla Fija -->
+            <div class="control-group">
+              <label class="checkbox-row">
+                <input type="checkbox" id="seedLock" checked>
+                <span>Usar semilla pseudoaleatoria fija</span>
+              </label>
+              <span class="control-help">Garantiza experimentos 100% reproducibles (Mulberry32).</span>
+            </div>
+          </div>
+
+          <!-- Botones de Acción -->
+          <div class="btn-grid">
+            <button id="btnGenerate" class="btn btn-secondary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              Generar Datos
+            </button>
+            <button id="btnTrain" class="btn btn-primary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Entrenar Modelo
+            </button>
+            <button id="btnReset" class="btn btn-secondary btn-full">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+              Restablecer Valores Predeterminados
+            </button>
+          </div>
+
+          <div style="margin-top: 0.5rem;">
+            <label class="checkbox-row">
+              <input type="checkbox" id="autoTrainToggle" checked>
+              <span>Auto-entrenar al mover parámetros</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- ================= ÁREA DE VISUALIZACIÓN DERECHA ================= -->
+        <div class="stage-container">
+          <!-- Header de Gráficas y Capas -->
+          <div class="stage-header">
+            <div class="chart-tabs">
+              <button id="tabScatter" class="chart-tab-btn active">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="5" r="1"/><circle cx="5" cy="19" r="1"/></svg>
+                Dispersión y Recta
+              </button>
+              <button id="tabParity" class="chart-tab-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                Real vs Predicho
+              </button>
+              <button id="tabResiduals" class="chart-tab-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="8"/><rect x="10" y="8" width="4" height="12"/><rect x="17" y="4" width="4" height="16"/></svg>
+                Distribución de Residuos
+              </button>
+            </div>
+
+            <!-- Toggles de Capas -->
+            <div class="chart-toggles">
+              <label class="toggle-item" title="Mostrar/ocultar puntos de entrenamiento">
+                <input type="checkbox" id="chkTrainPts" checked>
+                <span class="toggle-dot" style="background: var(--cyan);"></span>
+                <span>Train</span>
+              </label>
+              <label class="toggle-item" title="Mostrar/ocultar puntos de prueba">
+                <input type="checkbox" id="chkTestPts" checked>
+                <span class="toggle-dot" style="background: var(--amber);"></span>
+                <span>Test</span>
+              </label>
+              <label class="toggle-item" title="Mostrar/ocultar recta estimada del modelo">
+                <input type="checkbox" id="chkModelLine" checked>
+                <span class="toggle-dot" style="background: var(--purple-light);"></span>
+                <span>Modelo (&beta;)</span>
+              </label>
+              <label class="toggle-item" title="Mostrar/ocultar recta teórica real">
+                <input type="checkbox" id="chkTrueLine" checked>
+                <span class="toggle-dot" style="background: var(--emerald);"></span>
+                <span>Real (&beta;*)</span>
+              </label>
+              <label class="toggle-item" title="Mostrar/ocultar líneas verticales de error residual">
+                <input type="checkbox" id="chkResidualLines">
+                <span class="toggle-dot" style="background: var(--rose);"></span>
+                <span>Residuos</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Lienzo de Canvas Principal -->
+          <div class="canvas-wrapper">
+            <!-- Insignia flotante de la Ecuación del Modelo -->
+            <div id="equationBadge" class="equation-overlay">
+              <span class="pulse"></span>
+              <span id="equationText">ŷ = 0.00 + 0.00x</span>
+            </div>
+
+            <!-- Tooltip flotante en Canvas -->
+            <div id="canvasTooltip" class="canvas-tooltip"></div>
+
+            <canvas id="mainChartCanvas"></canvas>
+          </div>
+
+          <!-- Barra de Inferencia Interactiva en Vivo -->
+          <div class="inference-bar">
+            <div class="inference-input-group">
+              <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Calcular Predicción en Vivo:</span>
+              <span style="font-family: monospace; color: var(--amber-light);">x =</span>
+              <input type="number" id="inferInputX" class="inference-input" step="0.5" value="25.0">
+              <button id="btnInfer" class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.78rem;">
+                Calcular ŷ
+              </button>
+            </div>
+            <div class="inference-result">
+              <span>Ecuación evaluada: </span>
+              <span id="inferEvalFormula" style="font-family: monospace;">ŷ = &beta;₀ + &beta;₁(25) = </span>
+              <strong id="inferOutputY">0.00</strong>
+            </div>
+          </div>
+
+          <!-- ================= RESULTADOS Y MÉTRICAS ================= -->
+          <div class="metrics-dashboard">
+            <!-- R2 Score Card -->
+            <div class="metric-box accent-cyan">
+              <span class="metric-box-title">R&sup2; (Coef. Determinación Test)</span>
+              <span id="metricR2" class="metric-box-val">0.0000</span>
+              <span id="metricR2Train" class="metric-box-sub">Train R&sup2;: 0.0000</span>
+              <span id="badgeR2Quality" class="metric-quality quality-good">Ajuste Bueno</span>
+            </div>
+
+            <!-- RMSE Card -->
+            <div class="metric-box accent-purple">
+              <span class="metric-box-title">RMSE (Error Cuadrático Medio)</span>
+              <span id="metricRMSE" class="metric-box-val">0.00</span>
+              <span id="metricRMSETrain" class="metric-box-sub">Train RMSE: 0.00</span>
+              <span class="metric-box-sub" style="margin-top: 0.35rem;">En unidades de Y</span>
+            </div>
+
+            <!-- MAE Card -->
+            <div class="metric-box accent-emerald">
+              <span class="metric-box-title">MAE (Error Absoluto Medio)</span>
+              <span id="metricMAE" class="metric-box-val">0.00</span>
+              <span id="metricMAETrain" class="metric-box-sub">Train MAE: 0.00</span>
+              <span class="metric-box-sub" style="margin-top: 0.35rem;">Robusto a valores extremos</span>
+            </div>
+
+            <!-- MSE Card -->
+            <div class="metric-box accent-amber">
+              <span class="metric-box-title">MSE (Error Cuadrático)</span>
+              <span id="metricMSE" class="metric-box-val">0.00</span>
+              <span id="metricMSETrain" class="metric-box-sub">Train MSE: 0.00</span>
+              <span class="metric-box-sub" style="margin-top: 0.35rem;">Pérdida convexa OLS</span>
+            </div>
+          </div>
+
+          <!-- Tabla de Parámetros Aprendidos vs Reales -->
+          <div class="params-card">
+            <span style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--cyan-light); letter-spacing: 0.05em;">
+              Parámetros del Modelo: Estimados por OLS vs Reales Generadores
+            </span>
+            <table class="params-table">
+              <thead>
+                <tr>
+                  <th>Parámetro</th>
+                  <th>Valor Teórico (Real *)</th>
+                  <th>Valor Aprendido (&beta;)</th>
+                  <th>Error Absoluto (&Delta;)</th>
+                  <th>Interpretación</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Pendiente (&beta;<sub>1</sub>)</strong></td>
+                  <td id="paramTrueSlopeCell">2.000</td>
+                  <td id="paramLearnedSlopeCell" style="color: var(--cyan-light); font-weight: 700;">0.000</td>
+                  <td id="paramDeltaSlopeCell">0.000</td>
+                  <td id="paramInterpSlopeCell" style="font-size: 0.8rem; font-family: sans-serif; color: var(--text-muted);">
+                    Calculando...
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Intercepto (&beta;<sub>0</sub>)</strong></td>
+                  <td id="paramTrueInterceptCell">10.000</td>
+                  <td id="paramLearnedInterceptCell" style="color: var(--purple-light); font-weight: 700;">0.000</td>
+                  <td id="paramDeltaInterceptCell">0.000</td>
+                  <td id="paramInterpInterceptCell" style="font-size: 0.8rem; font-family: sans-serif; color: var(--text-muted);">
+                    Calculando...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Diagnóstico Automático Inteligente -->
+          <div class="diagnosis-panel">
+            <div class="diagnosis-header">
+              <div class="diagnosis-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+              </div>
+              <span>Diagnóstico Automático del Modelo e Interpretación Pedagógica</span>
+            </div>
+            <div id="diagnosisContent" class="diagnosis-text">
+              Generando diagnóstico interactivo...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SIMULACIÓN FRENTE A CARGA ================= -->
+  <section id="cargas">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Escalabilidad & Rendimiento
+        </span>
+        <h2 class="section-title">Simulación Frente a Carga: Benchmark de Volumetría</h2>
+        <p class="section-desc">
+          Evaluación empírica del tiempo de procesamiento en JavaScript local (usando <code>performance.now()</code>) y estabilidad de métricas ante 100, 1.000, 10.000 y 50.000 registros.
+        </p>
+      </div>
+
+      <div class="benchmark-grid">
+        <!-- Panel de Control del Benchmark -->
+        <div class="benchmark-controls-card">
+          <div>
+            <h3 style="font-size: 1.1rem; color: var(--text-main); margin-bottom: 0.5rem;">Cargas de Trabajo a Comparar</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+              Se ejecutarán 4 experimentos sintéticos idénticos aumentando progresivamente la escala de registros para observar el costo computacional del algoritmo OLS y la consistencia asintótica de las métricas.
+            </p>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <span class="meta-badge" style="font-size: 0.8rem; padding: 0.3rem 0.6rem;">100 Registros</span>
+            <span class="meta-badge" style="font-size: 0.8rem; padding: 0.3rem 0.6rem;">1.000 Registros</span>
+            <span class="meta-badge" style="font-size: 0.8rem; padding: 0.3rem 0.6rem;">10.000 Registros</span>
+            <span class="meta-badge" style="font-size: 0.8rem; padding: 0.3rem 0.6rem;">50.000 Registros</span>
+          </div>
+
+          <div>
+            <button id="btnRunBenchmark" class="btn btn-primary" style="width: 100%; padding: 0.8rem;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Ejecutar Comparación de Cargas
+            </button>
+          </div>
+
+          <!-- Barra de Progreso del Benchmark -->
+          <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim);">
+              <span id="benchmarkStatusText">Listo para iniciar</span>
+              <span id="benchmarkProgressPct">0%</span>
+            </div>
+            <div class="progress-bar-container">
+              <div id="benchmarkProgressBar" class="progress-bar-fill"></div>
+            </div>
+          </div>
+
+          <!-- Tabla de Resultados Comparativos -->
+          <table class="benchmark-results-table">
+            <thead>
+              <tr>
+                <th>Carga (N)</th>
+                <th>Tiempo OLS</th>
+                <th>Tiempo Total</th>
+                <th>RMSE Test</th>
+                <th>R&sup2; Test</th>
+              </tr>
+            </thead>
+            <tbody id="benchmarkTableBody">
+              <tr>
+                <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 1.5rem;">
+                  Presiona "Ejecutar Comparación de Cargas" para ver los resultados
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="callout warning" style="margin-top: 0.5rem; padding: 0.75rem; font-size: 0.8rem;">
+            <div>
+              <strong>Importante (Restricción Metodológica):</strong> Los tiempos reportados corresponden al motor monohilo local de JavaScript en el navegador. En un clúster Spark distribuido, los datos no se procesan en un único hilo sino en paralelo sobre particiones de RDD/DataFrames.
+            </div>
+          </div>
+        </div>
+
+        <!-- Canvas Gráfico del Benchmark -->
+        <div class="benchmark-chart-box">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">
+              Curva de Escalabilidad: Tiempo de Ejecución vs Volumetría
+            </h4>
+            <span style="font-size: 0.75rem; color: var(--cyan-light); font-family: monospace;">Escala O(N)</span>
+          </div>
+          <canvas id="benchmarkCanvas" class="benchmark-canvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Explicación de cómo Spark MLlib escala esto -->
+      <div class="distributed-card">
+        <div>
+          <div class="obj-header">
+            <div class="obj-icon cyan">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="8" y1="20" x2="8.01" y2="20"/><line x1="12" y1="18" x2="12.01" y2="18"/><line x1="12" y1="22" x2="12.01" y2="22"/><line x1="16" y1="16" x2="16.01" y2="16"/><line x1="16" y1="20" x2="16.01" y2="20"/></svg>
+            </div>
+            <h4 class="obj-title">Comportamiento en JS (Monohilo)</h4>
+          </div>
+          <p class="obj-text">
+            En JavaScript, el cálculo corre en un solo hilo con un límite de memoria asignado al navegador (heap de V8). Con 50.000 registros la complejidad lineal $O(N)$ tarda unos pocos milisegundos, pero al superar millones de registros se produciría un desbordamiento de memoria o congelamiento de la pestaña.
+          </p>
+        </div>
+
+        <div>
+          <div class="obj-header">
+            <div class="obj-icon emerald">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+            </div>
+            <h4 class="obj-title">Escalado en Apache Spark MLlib</h4>
+          </div>
+          <p class="obj-text">
+            Spark soluciona esto dividiendo los datos en miles de <strong>particiones distribuidas</strong> sobre múltiples Worker Nodes. Cada nodo calcula localmente los acumuladores de suma ($\sum x, \sum y, \sum x^2, \sum xy, n$) sobre sus particiones en RAM.
+          </p>
+        </div>
+
+        <div>
+          <div class="obj-header">
+            <div class="obj-icon purple">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <h4 class="obj-title">Reducción en Árbol (TreeAggregate)</h4>
+          </div>
+          <p class="obj-text">
+            Gracias al algoritmo <code>treeAggregate</code>, las sumas parciales se combinan jerárquicamente. Hacia el nodo Driver solo viajan unos pocos bytes de escalares en lugar de terabytes de datos brutos, permitiendo entrenar sobre 100.000.000 de registros sin colapso de red.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PARALELISMO CON APACHE SPARK MLLIB ================= -->
+  <section id="spark">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Arquitectura Distribuida
+        </span>
+        <h2 class="section-title">Implementación Distribuida en Apache Spark MLlib</h2>
+        <p class="section-desc">
+          Equivalencia conceptual y práctica entre el simulador local de mínimos cuadrados y el pipeline oficial de PySpark MLlib para clústeres de Big Data.
+        </p>
+      </div>
+
+      <!-- Diagrama SVG de Arquitectura Spark MLlib -->
+      <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 1.5rem; text-align: center;">
+        <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--cyan-light); margin-bottom: 1rem;">
+          Flujo de Ejecución Distribuida de Regresión en Clúster Spark
+        </h4>
+        <div style="max-width: 880px; margin: 0 auto; overflow-x: auto;">
+          <svg viewBox="0 0 860 210" style="width: 100%; min-width: 720px; height: auto;">
+            <!-- Driver Node -->
+            <rect x="20" y="55" width="160" height="100" rx="10" fill="#151e34" stroke="#6366f1" stroke-width="2"/>
+            <text x="100" y="85" fill="#f8fafc" font-size="13" font-weight="bold" text-anchor="middle">Driver Program</text>
+            <text x="100" y="105" fill="#94a3b8" font-size="11" text-anchor="middle">SparkSession</text>
+            <text x="100" y="125" fill="#818cf8" font-size="10" text-anchor="middle">LinearRegression()</text>
+            <text x="100" y="140" fill="#818cf8" font-size="10" text-anchor="middle">treeAggregate()</text>
+
+            <!-- Arrow Driver -> Cluster Manager -->
+            <line x1="180" y1="105" x2="230" y2="105" stroke="#6366f1" stroke-width="2" marker-end="url(#arrow)"/>
+
+            <!-- Cluster Manager -->
+            <rect x="230" y="70" width="130" height="70" rx="8" fill="#111726" stroke="#06b6d4" stroke-width="2"/>
+            <text x="295" y="98" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle">Cluster Manager</text>
+            <text x="295" y="118" fill="#22d3ee" font-size="10" text-anchor="middle">YARN / K8s / Standalone</text>
+
+            <!-- Arrow to Workers -->
+            <path d="M 360 105 L 410 40 L 440 40" fill="none" stroke="#06b6d4" stroke-width="2"/>
+            <path d="M 360 105 L 440 105" fill="none" stroke="#06b6d4" stroke-width="2"/>
+            <path d="M 360 105 L 410 170 L 440 170" fill="none" stroke="#06b6d4" stroke-width="2"/>
+
+            <!-- Worker 1 -->
+            <rect x="440" y="15" width="220" height="50" rx="6" fill="#151e34" stroke="#2c3a52" stroke-width="1.5"/>
+            <text x="450" y="35" fill="#10b981" font-size="11" font-weight="bold">Worker 1 (Executor):</text>
+            <text x="450" y="52" fill="#94a3b8" font-size="10">Particiones 0-3 &rarr; &sum;x, &sum;y, &sum;x&sup2;, &sum;xy</text>
+
+            <!-- Worker 2 -->
+            <rect x="440" y="80" width="220" height="50" rx="6" fill="#151e34" stroke="#2c3a52" stroke-width="1.5"/>
+            <text x="450" y="100" fill="#10b981" font-size="11" font-weight="bold">Worker 2 (Executor):</text>
+            <text x="450" y="117" fill="#94a3b8" font-size="10">Particiones 4-7 &rarr; &sum;x, &sum;y, &sum;x&sup2;, &sum;xy</text>
+
+            <!-- Worker 3 -->
+            <rect x="440" y="145" width="220" height="50" rx="6" fill="#151e34" stroke="#2c3a52" stroke-width="1.5"/>
+            <text x="450" y="165" fill="#10b981" font-size="11" font-weight="bold">Worker 3 (Executor):</text>
+            <text x="450" y="182" fill="#94a3b8" font-size="10">Particiones 8-11 &rarr; &sum;x, &sum;y, &sum;x&sup2;, &sum;xy</text>
+
+            <!-- Converge to Final Aggregator -->
+            <path d="M 660 40 L 700 95 L 720 95" fill="none" stroke="#10b981" stroke-width="2"/>
+            <path d="M 660 105 L 720 105" fill="none" stroke="#10b981" stroke-width="2"/>
+            <path d="M 660 170 L 700 115 L 720 115" fill="none" stroke="#10b981" stroke-width="2"/>
+
+            <!-- Result Box -->
+            <rect x="720" y="70" width="125" height="70" rx="8" fill="#151e34" stroke="#a855f7" stroke-width="2"/>
+            <text x="782" y="95" fill="#c084fc" font-size="11" font-weight="bold" text-anchor="middle">Modelo Entrenado</text>
+            <text x="782" y="112" fill="#f8fafc" font-size="10" text-anchor="middle">&beta;₀, &beta;₁ en Driver</text>
+            <text x="782" y="127" fill="#10b981" font-size="10" text-anchor="middle">O(1) Tráfico Red</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Bloque de Código PySpark -->
+      <div class="code-box">
+        <div class="code-header">
+          <span>Pipeline Completo de Regresión Lineal en PySpark (Spark MLlib)</span>
+          <button id="btnCopySparkCode" class="btn-copy">Copiar Código</button>
+        </div>
+        <pre><code id="pysparkCode"><span class="comment"># ==============================================================================</span>
+<span class="comment"># APRENDIZAJE SUPERVISADO: REGRESIÓN LINEAL DISTRIBUIDA CON APACHE SPARK MLLIB</span>
+<span class="comment"># Autor: Lorenzo Ramirez Calderon (ID: 20550074) - Procesamiento a Gran Escala</span>
+<span class="comment"># ==============================================================================</span>
+
+<span class="keyword">from</span> pyspark.sql <span class="keyword">import</span> SparkSession
+<span class="keyword">from</span> pyspark.ml.feature <span class="keyword">import</span> VectorAssembler
+<span class="keyword">from</span> pyspark.ml.regression <span class="keyword">import</span> LinearRegression
+<span class="keyword">from</span> pyspark.ml.evaluation <span class="keyword">import</span> RegressionEvaluator
+
+<span class="comment"># 1. Inicialización de SparkSession en clúster</span>
+spark = SparkSession.builder \
+    .appName(<span class="string">"RegresionSupervisada_SparkMLlib"</span>) \
+    .config(<span class="string">"spark.sql.shuffle.partitions"</span>, <span class="string">"8"</span>) \
+    .getOrCreate()
+
+<span class="comment"># 2. Carga y preparación del DataFrame distribuido (simulando X e Y)</span>
+<span class="comment"># data_df contiene columnas: 'x' (independiente) e 'y' (dependiente continua)</span>
+assembler = VectorAssembler(inputCols=[<span class="string">"x"</span>], outputCol=<span class="string">"features"</span>)
+dataset = assembler.transform(raw_df).select(<span class="string">"features"</span>, <span class="string">"y"</span>)
+
+<span class="comment"># 3. División aleatoria sin fuga de datos (75% Train, 25% Test)</span>
+train_df, test_df = dataset.randomSplit([<span class="number">0.75</span>, <span class="number">0.25</span>], seed=<span class="number">42</span>)
+
+<span class="comment"># 4. Instanciación del estimador de regresión lineal</span>
+<span class="comment"># regParam: penalización L2 (Ridge). elasticNetParam=0.0 equivale a L2 puro.</span>
+lr = LinearRegression(
+    featuresCol=<span class="string">"features"</span>,
+    labelCol=<span class="string">"y"</span>,
+    regParam=<span class="number">0.0</span>,              <span class="comment"># Equivalente a OLS si es 0.0</span>
+    elasticNetParam=<span class="number">0.0</span>,       <span class="comment"># 0.0=Ridge (L2), 1.0=Lasso (L1)</span>
+    maxIter=<span class="number">100</span>
+)
+
+<span class="comment"># 5. Entrenamiento distribuido del modelo (Mínimos Cuadrados en clúster)</span>
+model = lr.fit(train_df)
+
+<span class="comment"># 6. Extracción de los parámetros aprendidos</span>
+slope = model.coefficients[<span class="number">0</span>]
+intercept = model.intercept
+print(f<span class="string">"Ecuación aprendida: y = {intercept:.4f} + {slope:.4f}*x"</span>)
+
+<span class="comment"># 7. Inferencia distribuida sobre el conjunto de prueba retenido</span>
+predictions = model.transform(test_df)
+
+<span class="comment"># 8. Evaluación rigurosa de métricas de generalización</span>
+evaluator_rmse = RegressionEvaluator(labelCol=<span class="string">"y"</span>, predictionCol=<span class="string">"prediction"</span>, metricName=<span class="string">"rmse"</span>)
+evaluator_r2   = RegressionEvaluator(labelCol=<span class="string">"y"</span>, predictionCol=<span class="string">"prediction"</span>, metricName=<span class="string">"r2"</span>)
+evaluator_mae  = RegressionEvaluator(labelCol=<span class="string">"y"</span>, predictionCol=<span class="string">"prediction"</span>, metricName=<span class="string">"mae"</span>)
+
+print(f<span class="string">"RMSE Test: {evaluator_rmse.evaluate(predictions):.4f}"</span>)
+print(f<span class="string">"R²   Test: {evaluator_r2.evaluate(predictions):.4f}"</span>)
+print(f<span class="string">"MAE  Test: {evaluator_mae.evaluate(predictions):.4f}"</span>)
+</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= AUTOEVALUACIÓN INTERACTIVA ================= -->
+  <section id="quiz">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Comprobación de Conceptos
+        </span>
+        <h2 class="section-title">Autoevaluación de Aprendizaje</h2>
+        <p class="section-desc">
+          Responde a las siguientes preguntas conceptuales para validar los principios aprendidos durante la simulación de regresión.
+        </p>
+      </div>
+
+      <div class="quiz-grid">
+        <!-- Pregunta 1 -->
+        <div class="quiz-card" data-q="1">
+          <span class="quiz-q-num">Pregunta 1</span>
+          <p class="quiz-question">¿Cuál es la diferencia fundamental entre una tarea de regresión y una de clasificación en aprendizaje supervisado?</p>
+          <div class="quiz-options">
+            <button class="quiz-opt-btn" data-correct="false">A) La regresión solo trabaja con datos no etiquetados.</button>
+            <button class="quiz-opt-btn" data-correct="true">B) La regresión predice una variable numérica continua, mientras que la clasificación predice etiquetas categóricas discretas.</button>
+            <button class="quiz-opt-btn" data-correct="false">C) La clasificación minimiza el error cuadrático y la regresión minimiza la entropía cruzada.</button>
+          </div>
+          <div class="quiz-feedback"></div>
+        </div>
+
+        <!-- Pregunta 2 -->
+        <div class="quiz-card" data-q="2">
+          <span class="quiz-q-num">Pregunta 2</span>
+          <p class="quiz-question">En la ecuación y = &beta;₀ + &beta;₁x + &epsilon;, ¿qué representa específicamente &beta;₁?</p>
+          <div class="quiz-options">
+            <button class="quiz-opt-btn" data-correct="false">A) El valor esperado de y cuando x es exactamente igual a cero.</button>
+            <button class="quiz-opt-btn" data-correct="true">B) La pendiente o el cambio promedio en la variable y por cada incremento de una unidad en x.</button>
+            <button class="quiz-opt-btn" data-correct="false">C) La varianza del ruido Gaussiano en el conjunto de prueba.</button>
+          </div>
+          <div class="quiz-feedback"></div>
+        </div>
+
+        <!-- Pregunta 3 -->
+        <div class="quiz-card" data-q="3">
+          <span class="quiz-q-num">Pregunta 3</span>
+          <p class="quiz-question">Si los datos contienen varios valores atípicos (outliers) severos, ¿qué comportamiento se espera entre el RMSE y el MAE?</p>
+          <div class="quiz-options">
+            <button class="quiz-opt-btn" data-correct="false">A) El MAE será mucho mayor que el RMSE debido al valor absoluto.</button>
+            <button class="quiz-opt-btn" data-correct="true">B) El RMSE será significativamente mayor que el MAE, porque el término al cuadrado penaliza drásticamente los errores grandes.</button>
+            <button class="quiz-opt-btn" data-correct="false">C) Ambas métricas serán exactamente idénticas.</button>
+          </div>
+          <div class="quiz-feedback"></div>
+        </div>
+
+        <!-- Pregunta 4 -->
+        <div class="quiz-card" data-q="4">
+          <span class="quiz-q-num">Pregunta 4</span>
+          <p class="quiz-question">¿Por qué el algoritmo de mínimos cuadrados (OLS) es extraordinariamente eficiente para escalar en Apache Spark MLlib?</p>
+          <div class="quiz-options">
+            <button class="quiz-opt-btn" data-correct="true">A) Porque se resuelve mediante sumatorias aditivas que cada nodo calcula localmente sobre sus particiones sin intercambiar datos pesados por la red.</button>
+            <button class="quiz-opt-btn" data-correct="false">B) Porque Spark no evalúa las variables y usa aproximaciones empíricas aleatorias.</button>
+            <button class="quiz-opt-btn" data-correct="false">C) Porque requiere que todos los datos se descarguen forzosamente a la memoria del Driver.</button>
+          </div>
+          <div class="quiz-feedback"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= FOOTER Y CIERRE ACADÉMICO ================= -->
+  <footer>
+    <div class="container footer-inner">
+      <div class="footer-top">
+        <div>
+          <div style="font-weight: 700; font-size: 1.1rem; color: #fff; margin-bottom: 0.3rem;">
+            Simulador de Aprendizaje Supervisado: Regresión con Apache Spark MLlib
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">
+            Desarrollado como entrega académica para el curso de Procesamiento de Datos a Gran Escala.
+          </p>
+        </div>
+        <div>
+          <a href="#inicio" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.85rem;">
+            &uarr; Volver al Inicio
+          </a>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>
+          <strong>Autor:</strong> Lorenzo Ramirez Calderon &bull; <strong>ID:</strong> 20550074 &bull; <strong>Ingeniería de Sistemas</strong>
+        </div>
+        <div>
+          <strong>Docente:</strong> John Jairo Corredor &bull; <strong>Asignatura:</strong> Procesamiento de Datos a Gran Escala
+        </div>
+        <div>
+          Formato Obligatorio: Archivo Único HTML &bull; Vanilla JS &bull; Canvas HiDPI
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ================= SCRIPT LOGIC ================= -->
+  <script>
+
+/**
+ * ============================================================================
+ * SIMULADOR DE REGRESIÓN LINEAL - APACHE SPARK MLLIB
+ * Implementación 100% Vanilla JavaScript, Canvas Nativo y Matemáticas OLS
+ * Autor: Lorenzo Ramirez Calderon (ID: 20550074)
+ * ============================================================================
+ */
+
+(function() {
+  'use strict';
+
+  // --- 1. GENERADOR PSEUDOALEATORIO REPRODUCIBLE (Mulberry32) ---
+  function createRNG(seed) {
+    let s = seed >>> 0;
+    return function() {
+      let t = (s += 0x6D2B79F5);
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // Box-Muller para distribución normal estándar N(mean, stdev^2)
+  function randomGaussian(rng, mean, stdev) {
+    let u1 = rng();
+    let u2 = rng();
+    while (u1 === 0) u1 = rng(); // Evitar log(0)
+    const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+    return mean + z0 * stdev;
+  }
+
+  // --- 2. ESTADO GLOBAL DE LA APLICACIÓN ---
+  const state = {
+    // Parámetros de generación
+    records: 300,
+    trainSplit: 0.75,
+    trueSlope: 2.0,
+    trueIntercept: 10.0,
+    noise: 8.0,
+    outliersPct: 0,
+    lambdaReg: 0.0,
+    useFixedSeed: true,
+    baseSeed: 20550074, // ID del estudiante como semilla por defecto
+    autoTrain: true,
+
+    // Datos generados
+    dataset: [],
+    trainData: [],
+    testData: [],
+
+    // Modelo ajustado
+    model: null,
+    trainMetrics: null,
+    testMetrics: null,
+
+    // Estado visual y canvas
+    activeTab: 'scatter', // 'scatter' | 'parity' | 'residuals'
+    showTrainPts: true,
+    showTestPts: true,
+    showModelLine: true,
+    showTrueLine: true,
+    showResidualLines: false,
+
+    // Inferencia interactiva
+    inferX: 25.0,
+
+    // Límites espaciales del Canvas
+    bounds: { minX: 0, maxX: 50, minY: 0, maxY: 120 }
+  };
+
+  // --- 3. REFERENCIAS AL DOM ---
+  const el = {
+    // Selectores y Sliders
+    scenarioSelect: document.getElementById('scenarioSelect'),
+    paramRecords: document.getElementById('paramRecords'),
+    lblRecords: document.getElementById('lblRecords'),
+    paramTrainSplit: document.getElementById('paramTrainSplit'),
+    lblTrainSplit: document.getElementById('lblTrainSplit'),
+    paramSlope: document.getElementById('paramSlope'),
+    lblSlope: document.getElementById('lblSlope'),
+    paramIntercept: document.getElementById('paramIntercept'),
+    lblIntercept: document.getElementById('lblIntercept'),
+    paramNoise: document.getElementById('paramNoise'),
+    lblNoise: document.getElementById('lblNoise'),
+    paramOutliers: document.getElementById('paramOutliers'),
+    lblOutliers: document.getElementById('lblOutliers'),
+    paramLambda: document.getElementById('paramLambda'),
+    lblLambda: document.getElementById('lblLambda'),
+    seedLock: document.getElementById('seedLock'),
+    autoTrainToggle: document.getElementById('autoTrainToggle'),
+
+    // Botones
+    btnGenerate: document.getElementById('btnGenerate'),
+    btnTrain: document.getElementById('btnTrain'),
+    btnReset: document.getElementById('btnReset'),
+    btnRunBenchmark: document.getElementById('btnRunBenchmark'),
+    btnCopySparkCode: document.getElementById('btnCopySparkCode'),
+
+    // Tabs y Toggles
+    tabScatter: document.getElementById('tabScatter'),
+    tabParity: document.getElementById('tabParity'),
+    tabResiduals: document.getElementById('tabResiduals'),
+    chkTrainPts: document.getElementById('chkTrainPts'),
+    chkTestPts: document.getElementById('chkTestPts'),
+    chkModelLine: document.getElementById('chkModelLine'),
+    chkTrueLine: document.getElementById('chkTrueLine'),
+    chkResidualLines: document.getElementById('chkResidualLines'),
+
+    // Canvas
+    mainCanvas: document.getElementById('mainChartCanvas'),
+    equationBadge: document.getElementById('equationBadge'),
+    equationText: document.getElementById('equationText'),
+    canvasTooltip: document.getElementById('canvasTooltip'),
+
+    // Inferencia en vivo
+    inferInputX: document.getElementById('inferInputX'),
+    btnInfer: document.getElementById('btnInfer'),
+    inferEvalFormula: document.getElementById('inferEvalFormula'),
+    inferOutputY: document.getElementById('inferOutputY'),
+
+    // Métricas
+    metricR2: document.getElementById('metricR2'),
+    metricR2Train: document.getElementById('metricR2Train'),
+    badgeR2Quality: document.getElementById('badgeR2Quality'),
+    metricRMSE: document.getElementById('metricRMSE'),
+    metricRMSETrain: document.getElementById('metricRMSETrain'),
+    metricMAE: document.getElementById('metricMAE'),
+    metricMAETrain: document.getElementById('metricMAETrain'),
+    metricMSE: document.getElementById('metricMSE'),
+    metricMSETrain: document.getElementById('metricMSETrain'),
+
+    // Parámetros en tabla
+    paramTrueSlopeCell: document.getElementById('paramTrueSlopeCell'),
+    paramLearnedSlopeCell: document.getElementById('paramLearnedSlopeCell'),
+    paramDeltaSlopeCell: document.getElementById('paramDeltaSlopeCell'),
+    paramInterpSlopeCell: document.getElementById('paramInterpSlopeCell'),
+    paramTrueInterceptCell: document.getElementById('paramTrueInterceptCell'),
+    paramLearnedInterceptCell: document.getElementById('paramLearnedInterceptCell'),
+    paramDeltaInterceptCell: document.getElementById('paramDeltaInterceptCell'),
+    paramInterpInterceptCell: document.getElementById('paramInterpInterceptCell'),
+
+    // Diagnóstico
+    diagnosisContent: document.getElementById('diagnosisContent'),
+
+    // Benchmark
+    benchmarkCanvas: document.getElementById('benchmarkCanvas'),
+    benchmarkProgressBar: document.getElementById('benchmarkProgressBar'),
+    benchmarkStatusText: document.getElementById('benchmarkStatusText'),
+    benchmarkProgressPct: document.getElementById('benchmarkProgressPct'),
+    benchmarkTableBody: document.getElementById('benchmarkTableBody')
+  };
+
+  // --- 4. MOTOR MATEMÁTICO: GENERACIÓN DE DATOS ---
+  function generateSyntheticData() {
+    const seed = state.useFixedSeed ? state.baseSeed : Math.floor(Math.random() * 10000000);
+    const rng = createRNG(seed);
+
+    const N = state.records;
+    const data = [];
+    const outlierCount = Math.round(N * (state.outliersPct / 100));
+
+    // Generar N puntos distribuidos uniformemente en X in [0, 50]
+    for (let i = 0; i < N; i++) {
+      const x = rng() * 50;
+      const gaussianNoise = randomGaussian(rng, 0, state.noise);
+      let y = state.trueIntercept + state.trueSlope * x + gaussianNoise;
+      data.push({
+        id: i,
+        x: x,
+        y: y,
+        isOutlier: false,
+        split: 'train' // temporal
+      });
+    }
+
+    // Insertar outliers si se configuraron
+    if (outlierCount > 0) {
+      // Barajar índices para elegir cuáles serán outliers
+      const indices = Array.from({ length: N }, (_, i) => i);
+      for (let i = N - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        const temp = indices[i];
+        indices[i] = indices[j];
+        indices[j] = temp;
+      }
+
+      for (let k = 0; k < outlierCount; k++) {
+        const idx = indices[k];
+        const dir = rng() > 0.5 ? 1 : -1;
+        const perturbation = dir * (state.noise * 3 + 25 + rng() * 35);
+        data[idx].y += perturbation;
+        data[idx].isOutlier = true;
+      }
+    }
+
+    // Particionar en Train y Test mediante Fisher-Yates shuffle
+    const shuffled = [...data];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      const temp = shuffled[i];
+      shuffled[i] = shuffled[j];
+      shuffled[j] = temp;
+    }
+
+    const trainSize = Math.floor(N * state.trainSplit);
+    for (let i = 0; i < N; i++) {
+      shuffled[i].split = i < trainSize ? 'train' : 'test';
+    }
+
+    state.dataset = shuffled;
+    state.trainData = shuffled.filter(d => d.split === 'train');
+    state.testData = shuffled.filter(d => d.split === 'test');
+
+    calculateBounds();
+  }
+
+  function calculateBounds() {
+    if (state.dataset.length === 0) return;
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+
+    for (let i = 0; i < state.dataset.length; i++) {
+      const p = state.dataset[i];
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+
+    // Añadir margen del 8%
+    const padX = (maxX - minX) * 0.08 || 5;
+    const padY = (maxY - minY) * 0.08 || 10;
+
+    state.bounds = {
+      minX: Math.max(0, minX - padX),
+      maxX: maxX + padX,
+      minY: minY - padY,
+      maxY: maxY + padY
+    };
+  }
+
+  // --- 5. MOTOR MATEMÁTICO: AJUSTE POR MÍNIMOS CUADRADOS (OLS) ---
+  function fitModel() {
+    const train = state.trainData;
+    const n = train.length;
+
+    if (n < 2) {
+      state.model = { slope: 0, intercept: 0 };
+      return;
+    }
+
+    const tStart = performance.now();
+
+    // 1. Sumatorias aditivas (equivalente a Map-side reduce en Spark)
+    let sumX = 0, sumY = 0;
+    for (let i = 0; i < n; i++) {
+      sumX += train[i].x;
+      sumY += train[i].y;
+    }
+    const meanX = sumX / n;
+    const meanY = sumY / n;
+
+    // 2. Suma de cuadrados y productos cruzados centrados
+    let ssXX = 0, ssXY = 0;
+    for (let i = 0; i < n; i++) {
+      const dx = train[i].x - meanX;
+      const dy = train[i].y - meanY;
+      ssXX += dx * dx;
+      ssXY += dx * dy;
+    }
+
+    // 3. Estimación analítica OLS con soporte para regularización L2 Ridge
+    // En Ridge: beta1 = ssXY / (ssXX + lambda * n)
+    const lambdaEffective = state.lambdaReg * n;
+    const slope = ssXY / (ssXX + lambdaEffective);
+    const intercept = meanY - slope * meanX;
+
+    const tEnd = performance.now();
+
+    state.model = {
+      slope: slope,
+      intercept: intercept,
+      trainTimeMs: tEnd - tStart
+    };
+
+    // Evaluar métricas tanto en Train como en Test
+    state.trainMetrics = evaluateDataset(train, state.model);
+    state.testMetrics = evaluateDataset(state.testData, state.model);
+
+    // Actualizar visualizaciones y diagnósticos
+    updateUI();
+  }
+
+  // --- 6. MOTOR DE EVALUACIÓN DE MÉTRICAS ---
+  function evaluateDataset(dataset, model) {
+    const n = dataset.length;
+    if (n === 0) return { mse: 0, rmse: 0, mae: 0, r2: 0, residuals: [] };
+
+    let sumY = 0;
+    for (let i = 0; i < n; i++) {
+      sumY += dataset[i].y;
+    }
+    const meanY = sumY / n;
+
+    let ssRes = 0;
+    let ssTot = 0;
+    let sumAbsErr = 0;
+    const residuals = [];
+
+    for (let i = 0; i < n; i++) {
+      const pred = model.intercept + model.slope * dataset[i].x;
+      const err = dataset[i].y - pred;
+      residuals.push(err);
+
+      ssRes += err * err;
+      sumAbsErr += Math.abs(err);
+
+      const dTot = dataset[i].y - meanY;
+      ssTot += dTot * dTot;
+    }
+
+    const mse = ssRes / n;
+    const rmse = Math.sqrt(mse);
+    const mae = sumAbsErr / n;
+    const r2 = ssTot === 0 ? 0 : 1 - (ssRes / ssTot);
+
+    return {
+      n,
+      mse,
+      rmse,
+      mae,
+      r2,
+      residuals
+    };
+  }
+
+  // --- 7. RENDERIZADO EN CANVAS (HiDPI) ---
+  function setupHiDPICanvas(canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    return { ctx, width: rect.width, height: rect.height };
+  }
+
+  function drawMainChart() {
+    const { ctx, width, height } = setupHiDPICanvas(el.mainCanvas);
+    ctx.clearRect(0, 0, width, height);
+
+    if (state.activeTab === 'scatter') {
+      drawScatterPlot(ctx, width, height);
+    } else if (state.activeTab === 'parity') {
+      drawParityPlot(ctx, width, height);
+    } else if (state.activeTab === 'residuals') {
+      drawResidualsHistogram(ctx, width, height);
+    }
+  }
+
+  // --- 7.1. GRÁFICA DE DISPERSIÓN + RECTA DE REGRESIÓN ---
+  function drawScatterPlot(ctx, width, height) {
+    const padding = { top: 30, right: 30, bottom: 45, left: 55 };
+    const plotW = width - padding.left - padding.right;
+    const plotH = height - padding.top - padding.bottom;
+
+    const b = state.bounds;
+
+    function toScreenX(valX) {
+      return padding.left + ((valX - b.minX) / (b.maxX - b.minX)) * plotW;
+    }
+    function toScreenY(valY) {
+      return height - padding.bottom - ((valY - b.minY) / (b.maxY - b.minY)) * plotH;
+    }
+
+    // Grid y Ejes
+    drawAxesAndGrid(ctx, width, height, padding, b, 'Variable X (Independiente)', 'Variable Y (Dependiente)');
+
+    // 1. Líneas de Residuos (si están activadas)
+    if (state.showResidualLines && state.model) {
+      ctx.save();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(244, 63, 94, 0.45)';
+      ctx.setLineDash([2, 3]);
+
+      state.dataset.forEach(pt => {
+        if ((pt.split === 'train' && state.showTrainPts) || (pt.split === 'test' && state.showTestPts)) {
+          const predY = state.model.intercept + state.model.slope * pt.x;
+          const sx = toScreenX(pt.x);
+          const sy = toScreenY(pt.y);
+          const spy = toScreenY(predY);
+
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(sx, spy);
+          ctx.stroke();
+        }
+      });
+      ctx.restore();
+    }
+
+    // 2. Recta Teórica Real (Verde discontinua)
+    if (state.showTrueLine) {
+      ctx.save();
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 6]);
+
+      const yAtMin = state.trueIntercept + state.trueSlope * b.minX;
+      const yAtMax = state.trueIntercept + state.trueSlope * b.maxX;
+
+      ctx.beginPath();
+      ctx.moveTo(toScreenX(b.minX), toScreenY(yAtMin));
+      ctx.lineTo(toScreenX(b.maxX), toScreenY(yAtMax));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 3. Recta del Modelo Estimado (Púrpura brillante con glow)
+    if (state.showModelLine && state.model) {
+      ctx.save();
+      ctx.strokeStyle = '#a855f7';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = 'rgba(168, 85, 247, 0.5)';
+      ctx.shadowBlur = 10;
+
+      const predAtMin = state.model.intercept + state.model.slope * b.minX;
+      const predAtMax = state.model.intercept + state.model.slope * b.maxX;
+
+      ctx.beginPath();
+      ctx.moveTo(toScreenX(b.minX), toScreenY(predAtMin));
+      ctx.lineTo(toScreenX(b.maxX), toScreenY(predAtMax));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 4. Puntos de Dispersión
+    // Train points
+    if (state.showTrainPts) {
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.75)';
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.95)';
+      state.trainData.forEach(pt => {
+        if (!pt.isOutlier) {
+          ctx.beginPath();
+          ctx.arc(toScreenX(pt.x), toScreenY(pt.y), 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+    }
+
+    // Test points
+    if (state.showTestPts) {
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.85)';
+      ctx.strokeStyle = 'rgba(251, 191, 36, 1)';
+      state.testData.forEach(pt => {
+        if (!pt.isOutlier) {
+          ctx.beginPath();
+          ctx.arc(toScreenX(pt.x), toScreenY(pt.y), 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+    }
+
+    // Outliers destacados con halo rojo
+    state.dataset.forEach(pt => {
+      if (pt.isOutlier) {
+        const sx = toScreenX(pt.x);
+        const sy = toScreenY(pt.y);
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(244, 63, 94, 0.85)';
+        ctx.strokeStyle = '#f43f5e';
+        ctx.lineWidth = 2;
+
+        // Halo
+        ctx.beginPath();
+        ctx.arc(sx, sy, 7, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(244, 63, 94, 0.35)';
+        ctx.stroke();
+
+        // Núcleo
+        ctx.beginPath();
+        ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    });
+
+    // 5. Marcador de Inferencia en Vivo
+    if (state.model) {
+      const infY = state.model.intercept + state.model.slope * state.inferX;
+      const infSX = toScreenX(state.inferX);
+      const infSY = toScreenY(infY);
+
+      if (infSX >= padding.left && infSX <= width - padding.right) {
+        ctx.save();
+        // Líneas guía
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(infSX, height - padding.bottom);
+        ctx.lineTo(infSX, infSY);
+        ctx.lineTo(padding.left, infSY);
+        ctx.stroke();
+
+        // Punto animado / destacado
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#a855f7';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(infSX, infSY, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  }
+
+  // --- 7.2. GRÁFICA REAL VS PREDICHO (Y vs Ŷ) ---
+  function drawParityPlot(ctx, width, height) {
+    const padding = { top: 30, right: 30, bottom: 45, left: 55 };
+    const plotW = width - padding.left - padding.right;
+    const plotH = height - padding.top - padding.bottom;
+
+    if (!state.model || state.testData.length === 0) return;
+
+    // Calcular límites para escala cuadrada parity
+    let minVal = Infinity, maxVal = -Infinity;
+    state.testData.forEach(d => {
+      const pred = state.model.intercept + state.model.slope * d.x;
+      minVal = Math.min(minVal, d.y, pred);
+      maxVal = Math.max(maxVal, d.y, pred);
+    });
+
+    const pad = (maxVal - minVal) * 0.08 || 5;
+    const pBounds = { minX: minVal - pad, maxX: maxVal + pad, minY: minVal - pad, maxY: maxVal + pad };
+
+    function toScreenX(val) {
+      return padding.left + ((val - pBounds.minX) / (pBounds.maxX - pBounds.minX)) * plotW;
+    }
+    function toScreenY(val) {
+      return height - padding.bottom - ((val - pBounds.minY) / (pBounds.maxY - pBounds.minY)) * plotH;
+    }
+
+    drawAxesAndGrid(ctx, width, height, padding, pBounds, 'Valor Real (Y)', 'Valor Predicho (Ŷ)');
+
+    // Diagonal de Paridad Ideal (45 grados)
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(toScreenX(pBounds.minX), toScreenY(pBounds.minX));
+    ctx.lineTo(toScreenX(pBounds.maxX), toScreenY(pBounds.maxX));
+    ctx.stroke();
+    ctx.restore();
+
+    // Puntos de prueba evaluados
+    ctx.fillStyle = 'rgba(245, 158, 11, 0.85)';
+    state.testData.forEach(d => {
+      const pred = state.model.intercept + state.model.slope * d.x;
+      ctx.beginPath();
+      ctx.arc(toScreenX(d.y), toScreenY(pred), 4, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Insignia explicativa
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('Línea ideal de 45° (Y = Ŷ)', padding.left + 15, padding.top + 20);
+  }
+
+  // --- 7.3. HISTOGRAMA DE RESIDUOS (DISTRIBUCIÓN DE ERRORES) ---
+  function drawResidualsHistogram(ctx, width, height) {
+    const padding = { top: 30, right: 30, bottom: 45, left: 55 };
+    const plotW = width - padding.left - padding.right;
+    const plotH = height - padding.top - padding.bottom;
+
+    if (!state.testMetrics || state.testMetrics.residuals.length === 0) return;
+
+    const res = state.testMetrics.residuals;
+    const numBins = 16;
+    let minErr = Infinity, maxErr = -Infinity;
+    res.forEach(r => {
+      if (r < minErr) minErr = r;
+      if (r > maxErr) maxErr = r;
+    });
+
+    const maxAbs = Math.max(Math.abs(minErr), Math.abs(maxErr)) * 1.1 || 5;
+    const binWidth = (maxAbs * 2) / numBins;
+    const bins = new Array(numBins).fill(0);
+
+    res.forEach(r => {
+      let bIdx = Math.floor((r + maxAbs) / binWidth);
+      if (bIdx < 0) bIdx = 0;
+      if (bIdx >= numBins) bIdx = numBins - 1;
+      bins[bIdx]++;
+    });
+
+    const maxFreq = Math.max(...bins, 1);
+
+    const b = { minX: -maxAbs, maxX: maxAbs, minY: 0, maxY: maxFreq * 1.2 };
+    drawAxesAndGrid(ctx, width, height, padding, b, 'Residuo o Error (e = y - ŷ)', 'Frecuencia de Ocurrencias');
+
+    // Línea de Cero
+    const zeroX = padding.left + ((0 - b.minX) / (b.maxX - b.minX)) * plotW;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(244, 63, 94, 0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(zeroX, padding.top);
+    ctx.lineTo(zeroX, height - padding.bottom);
+    ctx.stroke();
+    ctx.restore();
+
+    // Dibujar Barras
+    const barSpacing = 2;
+    for (let i = 0; i < numBins; i++) {
+      const binStartVal = -maxAbs + i * binWidth;
+      const binEndVal = binStartVal + binWidth;
+      const x1 = padding.left + ((binStartVal - b.minX) / (b.maxX - b.minX)) * plotW;
+      const x2 = padding.left + ((binEndVal - b.minX) / (b.maxX - b.minX)) * plotW;
+      const barW = Math.max(1, (x2 - x1) - barSpacing);
+
+      const freq = bins[i];
+      const barH = (freq / b.maxY) * plotH;
+      const barY = height - padding.bottom - barH;
+
+      ctx.fillStyle = 'rgba(99, 102, 241, 0.7)';
+      ctx.strokeStyle = 'rgba(129, 140, 248, 0.9)';
+      ctx.fillRect(x1 + barSpacing / 2, barY, barW, barH);
+      ctx.strokeRect(x1 + barSpacing / 2, barY, barW, barH);
+    }
+  }
+
+  // --- 7.4. UTILITARIO: EJES, TICKS Y GRID ---
+  function drawAxesAndGrid(ctx, width, height, padding, bounds, labelX, labelY) {
+    const plotW = width - padding.left - padding.right;
+    const plotH = height - padding.top - padding.bottom;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = '#64748b';
+    ctx.font = '10px ui-monospace, monospace';
+
+    // Líneas Horizontales (Y)
+    const numYTicks = 5;
+    for (let i = 0; i <= numYTicks; i++) {
+      const frac = i / numYTicks;
+      const y = height - padding.bottom - frac * plotH;
+      const val = bounds.minY + frac * (bounds.maxY - bounds.minY);
+
+      ctx.beginPath();
+      ctx.moveTo(padding.left, y);
+      ctx.lineTo(width - padding.right, y);
+      ctx.stroke();
+
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(val.toFixed(1), padding.left - 8, y);
+    }
+
+    // Líneas Verticales (X)
+    const numXTicks = 6;
+    for (let i = 0; i <= numXTicks; i++) {
+      const frac = i / numXTicks;
+      const x = padding.left + frac * plotW;
+      const val = bounds.minX + frac * (bounds.maxX - bounds.minX);
+
+      ctx.beginPath();
+      ctx.moveTo(x, padding.top);
+      ctx.lineTo(x, height - padding.bottom);
+      ctx.stroke();
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(val.toFixed(1), x, height - padding.bottom + 8);
+    }
+
+    // Marco exterior de la gráfica
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.strokeRect(padding.left, padding.top, plotW, plotH);
+
+    // Títulos de los Ejes
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px sans-serif';
+
+    // Label Eje X
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(labelX, padding.left + plotW / 2, height - 6);
+
+    // Label Eje Y (rotado)
+    ctx.save();
+    ctx.translate(14, padding.top + plotH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.fillText(labelY, 0, 0);
+    ctx.restore();
+
+    ctx.restore();
+  }
+
+  // --- 8. ACTUALIZACIÓN DE LA INTERFAZ DE USUARIO ---
+  function updateUI() {
+    if (!state.model) return;
+
+    // 1. Ecuación en Canvas Badge
+    const sign = state.model.slope >= 0 ? '+' : '-';
+    const absSlope = Math.abs(state.model.slope).toFixed(3);
+    el.equationText.textContent = `ŷ = ${state.model.intercept.toFixed(2)} ${sign} ${absSlope}x`;
+
+    // 2. Tarjetas de Métricas
+    const mTest = state.testMetrics;
+    const mTrain = state.trainMetrics;
+
+    el.metricR2.textContent = mTest.r2.toFixed(4);
+    el.metricR2Train.textContent = `Train R²: ${mTrain.r2.toFixed(4)}`;
+
+    el.metricRMSE.textContent = mTest.rmse.toFixed(2);
+    el.metricRMSETrain.textContent = `Train RMSE: ${mTrain.rmse.toFixed(2)}`;
+
+    el.metricMAE.textContent = mTest.mae.toFixed(2);
+    el.metricMAETrain.textContent = `Train MAE: ${mTrain.mae.toFixed(2)}`;
+
+    el.metricMSE.textContent = mTest.mse.toFixed(2);
+    el.metricMSETrain.textContent = `Train MSE: ${mTrain.mse.toFixed(2)}`;
+
+    // Calidad del R²
+    updateQualityBadge(mTest.r2);
+
+    // 3. Tabla de Parámetros Aprendidos vs Reales
+    el.paramTrueSlopeCell.textContent = state.trueSlope.toFixed(3);
+    el.paramLearnedSlopeCell.textContent = state.model.slope.toFixed(3);
+    const deltaSlope = Math.abs(state.model.slope - state.trueSlope);
+    el.paramDeltaSlopeCell.textContent = deltaSlope.toFixed(3);
+
+    el.paramTrueInterceptCell.textContent = state.trueIntercept.toFixed(3);
+    el.paramLearnedInterceptCell.textContent = state.model.intercept.toFixed(3);
+    const deltaIntercept = Math.abs(state.model.intercept - state.trueIntercept);
+    el.paramDeltaInterceptCell.textContent = deltaIntercept.toFixed(3);
+
+    // Interpretaciones en tabla
+    el.paramInterpSlopeCell.textContent = deltaSlope < 0.15 ?
+      'Ajuste muy preciso de la pendiente' :
+      (deltaSlope < 0.5 ? 'Ajuste aceptable' : 'Sesgado por ruido/outliers');
+
+    el.paramInterpInterceptCell.textContent = deltaIntercept < 1.0 ?
+      'Excelente recuperación del punto de corte' :
+      'Desviación moderada por dispersión';
+
+    // 4. Inferencia
+    updateInferenceDisplay();
+
+    // 5. Diagnóstico Inteligente en Lenguaje Natural
+    generateDiagnosis();
+
+    // 6. Redibujar Canvas
+    drawMainChart();
+  }
+
+  function updateQualityBadge(r2) {
+    el.badgeR2Quality.className = 'metric-quality';
+    if (r2 >= 0.88) {
+      el.badgeR2Quality.classList.add('quality-excellent');
+      el.badgeR2Quality.textContent = 'Ajuste Sobresaliente';
+    } else if (r2 >= 0.70) {
+      el.badgeR2Quality.classList.add('quality-good');
+      el.badgeR2Quality.textContent = 'Ajuste Bueno';
+    } else if (r2 >= 0.40) {
+      el.badgeR2Quality.classList.add('quality-moderate');
+      el.badgeR2Quality.textContent = 'Ajuste Moderado';
+    } else {
+      el.badgeR2Quality.classList.add('quality-poor');
+      el.badgeR2Quality.textContent = 'Ajuste Deficiente / Débil';
+    }
+  }
+
+  function updateInferenceDisplay() {
+    if (!state.model) return;
+    const x = state.inferX;
+    const yHat = state.model.intercept + state.model.slope * x;
+
+    const sign = state.model.slope >= 0 ? '+' : '-';
+    el.inferEvalFormula.textContent = `ŷ = ${state.model.intercept.toFixed(2)} ${sign} ${Math.abs(state.model.slope).toFixed(2)}(${x.toFixed(1)}) = `;
+    el.inferOutputY.textContent = yHat.toFixed(2);
+  }
+
+  // --- 9. GENERADOR DE DIAGNÓSTICO EN LENGUAJE NATURAL ---
+  function generateDiagnosis() {
+    const t = state.testMetrics;
+    const tr = state.trainMetrics;
+    const slopeDiff = Math.abs(state.model.slope - state.trueSlope);
+    const rmseRatio = t.mae > 0 ? (t.rmse / t.mae) : 1;
+
+    let p1 = '', p2 = '', p3 = '';
+
+    // Diagnóstico R2 y bondad de ajuste
+    if (t.r2 >= 0.85) {
+      p1 = `El modelo presenta un coeficiente de determinación <strong>R² = ${t.r2.toFixed(4)}</strong> en el conjunto de prueba, indicando que el <strong>${(t.r2 * 100).toFixed(1)}% de la varianza</strong> de la variable objetivo Y es explicada satisfactoriamente por la variable predictora X. Sus predicciones se encuentran notablemente próximas a los valores reales.`;
+    } else if (t.r2 >= 0.55) {
+      p1 = `El modelo exhibe un rendimiento moderado con <strong>R² = ${t.r2.toFixed(4)}</strong>. Aunque captura la tendencia lineal global, existe una dispersión estocástica considerable (&sigma; = ${state.noise.toFixed(1)}) que limita la precisión puntual de las estimaciones.`;
+    } else {
+      p1 = `El rendimiento del modelo es débil (<strong>R² = ${t.r2.toFixed(4)}</strong>). La relación lineal es difusa o el nivel de ruido supera sustancialmente la señal del proceso. El modelo lineal simple resulta insuficiente para explicar adecuadamente los datos bajo estas condiciones.`;
+    }
+
+    // Análisis de Generalización y Overfitting
+    const errGap = t.rmse - tr.rmse;
+    if (Math.abs(errGap) < tr.rmse * 0.15) {
+      p2 = `<strong>Generalización y ausencia de sobreajuste:</strong> El error RMSE en prueba (${t.rmse.toFixed(2)}) es casi idéntico al de entrenamiento (${tr.rmse.toFixed(2)}). Esto demuestra que el modelo de regresión lineal simple tiene una adecuada capacidad de generalización sobre observaciones nunca vistas.`;
+    } else if (errGap > 0) {
+      p2 = `<strong>Ligero desbalance:</strong> El error en prueba supera al de entrenamiento en &Delta; = ${errGap.toFixed(2)}. Esto suele ocurrir cuando la partición de prueba captura fluctuaciones aleatorias desfavorables o cuando el tamaño de muestra es muy reducido.`;
+    } else {
+      p2 = `<strong>Muestra consistente:</strong> El conjunto de prueba presenta un error ligeramente menor o equivalente al de entrenamiento, lo cual confirma que el particionamiento aleatorio no introdujo sesgos de muestreo desproporcionados.`;
+    }
+
+    // Análisis de Outliers y Recuperación de Parámetros
+    if (state.outliersPct > 0) {
+      p3 = `<strong>Impacto de Valores Atípicos (${state.outliersPct}% outliers):</strong> El ratio RMSE / MAE es de <strong>${rmseRatio.toFixed(2)}</strong>. Debido a que el método OLS eleva los residuos al cuadrado, los puntos atípicos ejercen un efecto de palanca (leverage) significativo, desviando la pendiente estimada en &Delta;&beta;₁ = ${slopeDiff.toFixed(3)} respecto al valor real.`;
+    } else {
+      p3 = `<strong>Recuperación de Parámetros Teóricos:</strong> Al no existir valores atípicos severos, el estimador insesgado de mínimos cuadrados logró reconstruir la pendiente teórica &beta;₁* = ${state.trueSlope.toFixed(2)} con un error mínimo de ${slopeDiff.toFixed(3)}.`;
+    }
+
+    el.diagnosisContent.innerHTML = `<p>${p1}</p><p>${p2}</p><p>${p3}</p>`;
+  }
+
+  // --- 10. SIMULACIÓN FRENTE A CARGA (BENCHMARK) ---
+  async function runWorkloadBenchmark() {
+    el.btnRunBenchmark.disabled = true;
+    el.btnRunBenchmark.textContent = 'Ejecutando Pruebas de Carga...';
+    el.benchmarkTableBody.innerHTML = '';
+
+    const sizes = [100, 1000, 10000, 50000];
+    const results = [];
+
+    for (let i = 0; i < sizes.length; i++) {
+      const N = sizes[i];
+      const pct = Math.round(((i + 0.5) / sizes.length) * 100);
+
+      el.benchmarkStatusText.textContent = `Procesando carga de ${N.toLocaleString()} registros...`;
+      el.benchmarkProgressPct.textContent = `${pct}%`;
+      el.benchmarkProgressBar.style.width = `${pct}%`;
+
+      // Ceder el hilo de JS con setTimeout para permitir que el navegador actualice la UI
+      await new Promise(resolve => setTimeout(resolve, 40));
+
+      // 1. Generación de datos
+      const t0 = performance.now();
+      const rng = createRNG(state.baseSeed + N);
+      const data = [];
+      for (let j = 0; j < N; j++) {
+        const x = rng() * 50;
+        const y = 10.0 + 2.0 * x + randomGaussian(rng, 0, 8.0);
+        data.push({ x, y });
+      }
+
+      // 2. Partición Train/Test (80/20)
+      const splitIdx = Math.floor(N * 0.8);
+      const train = data.slice(0, splitIdx);
+      const test = data.slice(splitIdx);
+      const tDataReady = performance.now();
+
+      // 3. Ajuste OLS
+      const tTrainStart = performance.now();
+      let sumX = 0, sumY = 0;
+      const nTrain = train.length;
+      for (let k = 0; k < nTrain; k++) {
+        sumX += train[k].x;
+        sumY += train[k].y;
+      }
+      const meanX = sumX / nTrain;
+      const meanY = sumY / nTrain;
+
+      let ssXX = 0, ssXY = 0;
+      for (let k = 0; k < nTrain; k++) {
+        const dx = train[k].x - meanX;
+        const dy = train[k].y - meanY;
+        ssXX += dx * dx;
+        ssXY += dx * dy;
+      }
+      const slope = ssXY / ssXX;
+      const intercept = meanY - slope * meanX;
+      const tTrainEnd = performance.now();
+
+      // 4. Evaluación sobre Test
+      const tEvalStart = performance.now();
+      const nTest = test.length;
+      let sumYTest = 0;
+      for (let k = 0; k < nTest; k++) sumYTest += test[k].y;
+      const meanYTest = sumYTest / nTest;
+
+      let ssRes = 0, ssTot = 0, sumAbs = 0;
+      for (let k = 0; k < nTest; k++) {
+        const pred = intercept + slope * test[k].x;
+        const err = test[k].y - pred;
+        ssRes += err * err;
+        sumAbs += Math.abs(err);
+        const dy = test[k].y - meanYTest;
+        ssTot += dy * dy;
+      }
+      const mse = ssRes / nTest;
+      const rmse = Math.sqrt(mse);
+      const mae = sumAbs / nTest;
+      const r2 = ssTot === 0 ? 0 : 1 - (ssRes / ssTot);
+      const tEvalEnd = performance.now();
+
+      const timeOLS = tTrainEnd - tTrainStart;
+      const timeTotal = tEvalEnd - t0;
+
+      const recordResult = {
+        N,
+        timeOLS,
+        timeTotal,
+        rmse,
+        mae,
+        r2,
+        slope,
+        intercept
+      };
+      results.push(recordResult);
+
+      // Agregar fila a la tabla
+      appendBenchmarkRow(recordResult);
+    }
+
+    el.benchmarkStatusText.textContent = 'Simulación de cargas completada con éxito';
+    el.benchmarkProgressPct.textContent = '100%';
+    el.benchmarkProgressBar.style.width = '100%';
+
+    el.btnRunBenchmark.disabled = false;
+    el.btnRunBenchmark.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Ejecutar Comparación de Cargas
+    `;
+
+    // Dibujar Gráfica de Benchmark
+    drawBenchmarkChart(results);
+  }
+
+  function appendBenchmarkRow(r) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${r.N.toLocaleString()}</strong></td>
+      <td style="color: var(--cyan-light);">${r.timeOLS < 1 ? (r.timeOLS * 1000).toFixed(0) + ' &mu;s' : r.timeOLS.toFixed(2) + ' ms'}</td>
+      <td style="color: var(--purple-light);">${r.timeTotal.toFixed(2)} ms</td>
+      <td>${r.rmse.toFixed(3)}</td>
+      <td style="color: var(--emerald-light); font-weight: 700;">${r.r2.toFixed(4)}</td>
+    `;
+    el.benchmarkTableBody.appendChild(tr);
+  }
+
+  function drawBenchmarkChart(results) {
+    const { ctx, width, height } = setupHiDPICanvas(el.benchmarkCanvas);
+    ctx.clearRect(0, 0, width, height);
+
+    const padding = { top: 25, right: 35, bottom: 45, left: 60 };
+    const plotW = width - padding.left - padding.right;
+    const plotH = height - padding.top - padding.bottom;
+
+    const maxTime = Math.max(...results.map(r => r.timeTotal), 1) * 1.25;
+
+    // Ejes
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = '#64748b';
+    ctx.font = '10px monospace';
+
+    // Líneas Horizontales
+    for (let i = 0; i <= 5; i++) {
+      const frac = i / 5;
+      const y = height - padding.bottom - frac * plotH;
+      const val = frac * maxTime;
+
+      ctx.beginPath();
+      ctx.moveTo(padding.left, y);
+      ctx.lineTo(width - padding.right, y);
+      ctx.stroke();
+
+      ctx.textAlign = 'right';
+      ctx.fillText(val.toFixed(1) + ' ms', padding.left - 8, y + 3);
+    }
+
+    // Título de Eje
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Carga de Datos (N registros)', padding.left + plotW / 2, height - 8);
+
+    // Dibujar Barras por Carga
+    const numBars = results.length;
+    const slotW = plotW / numBars;
+    const barW = Math.min(slotW * 0.55, 60);
+
+    results.forEach((r, idx) => {
+      const centerX = padding.left + idx * slotW + slotW / 2;
+      const barH = (r.timeTotal / maxTime) * plotH;
+      const barY = height - padding.bottom - barH;
+
+      // Barra de tiempo total
+      const grad = ctx.createLinearGradient(0, barY, 0, height - padding.bottom);
+      grad.addColorStop(0, '#6366f1');
+      grad.addColorStop(1, '#06b6d4');
+
+      ctx.fillStyle = grad;
+      ctx.fillRect(centerX - barW / 2, barY, barW, barH);
+
+      // Etiqueta del valor de tiempo arriba de la barra
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(r.timeTotal.toFixed(1) + ' ms', centerX, barY - 6);
+
+      // Etiqueta de N abajo
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '11px monospace';
+      ctx.fillText(r.N >= 1000 ? (r.N / 1000) + 'k' : r.N, centerX, height - padding.bottom + 16);
+    });
+  }
+
+  // --- 11. TOOLTIP EN CANVAS ---
+  function setupCanvasTooltip() {
+    el.mainCanvas.addEventListener('mousemove', function(e) {
+      if (state.activeTab !== 'scatter' || state.dataset.length === 0) {
+        el.canvasTooltip.style.display = 'none';
+        return;
+      }
+
+      const rect = el.mainCanvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const padding = { top: 30, right: 30, bottom: 45, left: 55 };
+      const plotW = rect.width - padding.left - padding.right;
+      const plotH = rect.height - padding.top - padding.bottom;
+      const b = state.bounds;
+
+      function toScreenX(valX) {
+        return padding.left + ((valX - b.minX) / (b.maxX - b.minX)) * plotW;
+      }
+      function toScreenY(valY) {
+        return rect.height - padding.bottom - ((valY - b.minY) / (b.maxY - b.minY)) * plotH;
+      }
+
+      // Buscar punto más cercano en radio de 12px
+      let closestPt = null;
+      let closestDist = 12;
+
+      state.dataset.forEach(pt => {
+        const sx = toScreenX(pt.x);
+        const sy = toScreenY(pt.y);
+        const dist = Math.hypot(mouseX - sx, mouseY - sy);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closestPt = pt;
+        }
+      });
+
+      if (closestPt && state.model) {
+        const predY = state.model.intercept + state.model.slope * closestPt.x;
+        const err = closestPt.y - predY;
+
+        el.canvasTooltip.style.display = 'block';
+        el.canvasTooltip.style.left = `${mouseX}px`;
+        el.canvasTooltip.style.top = `${mouseY}px`;
+        el.canvasTooltip.innerHTML = `
+          <div style="font-weight: bold; color: ${closestPt.split === 'train' ? 'var(--cyan-light)' : 'var(--amber-light)'}; margin-bottom: 3px;">
+            ${closestPt.isOutlier ? '⚠️ Outlier' : (closestPt.split === 'train' ? 'Punto de Entrenamiento' : 'Punto de Prueba')}
+          </div>
+          <div><strong>X:</strong> ${closestPt.x.toFixed(2)}</div>
+          <div><strong>Y Real:</strong> ${closestPt.y.toFixed(2)}</div>
+          <div><strong>Ŷ Predicho:</strong> ${predY.toFixed(2)}</div>
+          <div style="color: ${Math.abs(err) > state.noise * 1.5 ? 'var(--rose-light)' : 'var(--text-muted)'};">
+            <strong>Residuo:</strong> ${err.toFixed(2)}
+          </div>
+        `;
+      } else {
+        el.canvasTooltip.style.display = 'none';
+      }
+    });
+
+    el.mainCanvas.addEventListener('mouseleave', function() {
+      el.canvasTooltip.style.display = 'none';
+    });
+  }
+
+  // --- 12. ESCENARIOS PRECONFIGURADOS ---
+  function applyScenario(scenarioKey) {
+    if (scenarioKey === 'clear') {
+      state.noise = 2.5;
+      state.outliersPct = 0;
+      state.trueSlope = 2.5;
+      state.trueIntercept = 5.0;
+      state.lambdaReg = 0.0;
+    } else if (scenarioKey === 'moderate') {
+      state.noise = 8.0;
+      state.outliersPct = 0;
+      state.trueSlope = 2.0;
+      state.trueIntercept = 10.0;
+      state.lambdaReg = 0.0;
+    } else if (scenarioKey === 'heavy') {
+      state.noise = 22.0;
+      state.outliersPct = 0;
+      state.trueSlope = 1.5;
+      state.trueIntercept = 15.0;
+      state.lambdaReg = 0.0;
+    } else if (scenarioKey === 'outliers') {
+      state.noise = 5.0;
+      state.outliersPct = 8;
+      state.trueSlope = 2.0;
+      state.trueIntercept = 10.0;
+      state.lambdaReg = 0.0;
+    } else if (scenarioKey === 'weak') {
+      state.noise = 28.0;
+      state.outliersPct = 0;
+      state.trueSlope = 0.05;
+      state.trueIntercept = 25.0;
+      state.lambdaReg = 0.0;
+    }
+
+    // Sincronizar Sliders en UI
+    el.paramNoise.value = state.noise;
+    el.lblNoise.textContent = state.noise.toFixed(1);
+
+    el.paramOutliers.value = state.outliersPct;
+    el.lblOutliers.textContent = `${state.outliersPct}%`;
+
+    el.paramSlope.value = state.trueSlope;
+    el.lblSlope.textContent = state.trueSlope.toFixed(1);
+
+    el.paramIntercept.value = state.trueIntercept;
+    el.lblIntercept.textContent = state.trueIntercept.toFixed(1);
+
+    el.paramLambda.value = state.lambdaReg;
+    el.lblLambda.textContent = state.lambdaReg.toFixed(1);
+
+    generateSyntheticData();
+    fitModel();
+  }
+
+  // --- 13. AUTOEVALUACIÓN INTERACTIVA (QUIZ) ---
+  function setupQuiz() {
+    const cards = document.querySelectorAll('.quiz-card');
+    cards.forEach(card => {
+      const buttons = card.querySelectorAll('.quiz-opt-btn');
+      const feedback = card.querySelector('.quiz-feedback');
+
+      buttons.forEach(btn => {
+        btn.addEventListener('click', function() {
+          const isCorrect = this.getAttribute('data-correct') === 'true';
+
+          buttons.forEach(b => {
+            b.disabled = true;
+            if (b.getAttribute('data-correct') === 'true') {
+              b.classList.add('correct');
+            }
+          });
+
+          if (!isCorrect) {
+            this.classList.add('incorrect');
+            feedback.style.background = 'rgba(244, 63, 94, 0.1)';
+            feedback.style.color = 'var(--rose-light)';
+            feedback.style.border = '1px solid rgba(244, 63, 94, 0.3)';
+            feedback.innerHTML = '<strong>Incorrecto.</strong> Revisa el fundamento teórico correspondiente.';
+          } else {
+            feedback.style.background = 'rgba(16, 185, 129, 0.1)';
+            feedback.style.color = 'var(--emerald-light)';
+            feedback.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+            feedback.innerHTML = '<strong>¡Correcto!</strong> Comprensión conceptual precisa.';
+          }
+          feedback.classList.add('show');
+        });
+      });
+    });
+  }
+
+  // --- 14. EVENT LISTENERS Y VINCULACIÓN ---
+  function setupEventListeners() {
+    // Escenarios
+    el.scenarioSelect.addEventListener('change', function() {
+      applyScenario(this.value);
+    });
+
+    // Slider N
+    el.paramRecords.addEventListener('input', function() {
+      state.records = parseInt(this.value, 10);
+      el.lblRecords.textContent = state.records;
+      if (state.autoTrain) {
+        generateSyntheticData();
+        fitModel();
+      }
+    });
+
+    // Slider Split
+    el.paramTrainSplit.addEventListener('input', function() {
+      state.trainSplit = parseInt(this.value, 10) / 100;
+      el.lblTrainSplit.textContent = `${this.value}%`;
+      if (state.autoTrain) {
+        generateSyntheticData();
+        fitModel();
+      }
+    });
+
+    // Slider Slope
+    el.paramSlope.addEventListener('input', function() {
+      state.trueSlope = parseFloat(this.value);
+      el.lblSlope.textContent = state.trueSlope.toFixed(1);
+      el.scenarioSelect.value = 'custom';
+      if (state.autoTrain) {
+        generateSyntheticData();
+        fitModel();
+      }
+    });
+
+    // Slider Intercept
+    el.paramIntercept.addEventListener('input', function() {
+      state.trueIntercept = parseFloat(this.value);
+      el.lblIntercept.textContent = state.trueIntercept.toFixed(1);
+      el.scenarioSelect.value = 'custom';
+      if (state.autoTrain) {
+        generateSyntheticData();
+        fitModel();
+      }
+    });
+
+    // Slider Noise
+    el.paramNoise.addEventListener('input', function() {
+      state.noise = parseFloat(this.value);
+      el.lblNoise.textContent = state.noise.toFixed(1);
+      el.scenarioSelect.value = 'custom';
+      if (state.autoTrain) {
+        generateSyntheticData();
+        fitModel();
+      }
+    });
+
+    // Slider Outliers
+    el.paramOutliers.addEventListener('input', function() {
+      state.outliersPct = parseInt(this.value, 10);
+      el.lblOutliers.textContent = `${state.outliersPct}%`;
+      el.scenarioSelect.value = 'custom';
+      if (state.autoTrain) {
+        generateSyntheticData();
+        fitModel();
+      }
+    });
+
+    // Slider Lambda (Ridge)
+    el.paramLambda.addEventListener('input', function() {
+      state.lambdaReg = parseFloat(this.value);
+      el.lblLambda.textContent = state.lambdaReg.toFixed(1);
+      if (state.autoTrain) {
+        fitModel();
+      }
+    });
+
+    // Checkbox Semilla
+    el.seedLock.addEventListener('change', function() {
+      state.useFixedSeed = this.checked;
+      generateSyntheticData();
+      fitModel();
+    });
+
+    // Checkbox AutoTrain
+    el.autoTrainToggle.addEventListener('change', function() {
+      state.autoTrain = this.checked;
+    });
+
+    // Botón Generar Datos
+    el.btnGenerate.addEventListener('click', function() {
+      if (!state.useFixedSeed) {
+        state.baseSeed = Math.floor(Math.random() * 99999999);
+      }
+      generateSyntheticData();
+      fitModel();
+    });
+
+    // Botón Entrenar Modelo
+    el.btnTrain.addEventListener('click', function() {
+      fitModel();
+    });
+
+    // Botón Restablecer
+    el.btnReset.addEventListener('click', function() {
+      el.scenarioSelect.value = 'moderate';
+      applyScenario('moderate');
+    });
+
+    // Inferencia interactiva
+    el.inferInputX.addEventListener('input', function() {
+      state.inferX = parseFloat(this.value) || 0;
+      updateInferenceDisplay();
+      drawMainChart();
+    });
+    el.btnInfer.addEventListener('click', function() {
+      state.inferX = parseFloat(el.inferInputX.value) || 0;
+      updateInferenceDisplay();
+      drawMainChart();
+    });
+
+    // Tabs de Gráfica
+    const tabs = [
+      { btn: el.tabScatter, key: 'scatter' },
+      { btn: el.tabParity, key: 'parity' },
+      { btn: el.tabResiduals, key: 'residuals' }
+    ];
+    tabs.forEach(t => {
+      t.btn.addEventListener('click', function() {
+        tabs.forEach(o => o.btn.classList.remove('active'));
+        this.classList.add('active');
+        state.activeTab = t.key;
+        drawMainChart();
+      });
+    });
+
+    // Toggles de Capas
+    el.chkTrainPts.addEventListener('change', function() {
+      state.showTrainPts = this.checked;
+      drawMainChart();
+    });
+    el.chkTestPts.addEventListener('change', function() {
+      state.showTestPts = this.checked;
+      drawMainChart();
+    });
+    el.chkModelLine.addEventListener('change', function() {
+      state.showModelLine = this.checked;
+      drawMainChart();
+    });
+    el.chkTrueLine.addEventListener('change', function() {
+      state.showTrueLine = this.checked;
+      drawMainChart();
+    });
+    el.chkResidualLines.addEventListener('change', function() {
+      state.showResidualLines = this.checked;
+      drawMainChart();
+    });
+
+    // Botón de Benchmark
+    el.btnRunBenchmark.addEventListener('click', runWorkloadBenchmark);
+
+    // Botón Copiar Código PySpark
+    el.btnCopySparkCode.addEventListener('click', function() {
+      const code = document.getElementById('pysparkCode').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const orig = el.btnCopySparkCode.textContent;
+        el.btnCopySparkCode.textContent = '¡Copiado!';
+        setTimeout(() => el.btnCopySparkCode.textContent = orig, 2000);
+      });
+    });
+
+    // Responsive Canvas Resize
+    window.addEventListener('resize', () => {
+      drawMainChart();
+    });
+  }
+
+  // --- 15. INICIALIZACIÓN ---
+  function init() {
+    setupEventListeners();
+    setupCanvasTooltip();
+    setupQuiz();
+    applyScenario('moderate');
+  }
+
+  // Arrancar cuando el DOM esté listo
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+})();
+
+  </script>
+</body>
+</html>
