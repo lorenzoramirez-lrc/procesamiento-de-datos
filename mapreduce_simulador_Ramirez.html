@@ -1,25 +1,30 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Procesamiento de Datos a Gran Escala — Simulador MapReduce</title>
+<title>Large-Scale Data Processing — MapReduce Simulator</title>
 
 <style>
   :root {
     --bg: #0f1117;
     --panel: #171a23;
     --panel2: #1e2330;
+    --panel3: #242b3b;
     --border: #303747;
+    --border-light: #3f495e;
     --text: #eef2f7;
     --muted: #a9b2c3;
     --accent: #8b7cf6;
+    --accent-glow: rgba(139, 124, 246, 0.35);
     --accent2: #5fd1b9;
     --yellow: #f4c95d;
     --red: #f47b7b;
     --blue: #6ea8fe;
     --green: #69d28f;
-    --shadow: 0 14px 40px rgba(0,0,0,.28);
+    --cyan: #38bdf8;
+    --orange: #fb923c;
+    --shadow: 0 14px 40px rgba(0,0,0,.35);
   }
 
   * {
@@ -34,8 +39,7 @@
     margin: 0;
     font-family: Inter, ui-sans-serif, system-ui, -apple-system,
       BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background:
-      radial-gradient(circle at top, #191d2a 0, var(--bg) 42%);
+    background: radial-gradient(circle at top, #191d2a 0%, var(--bg) 45%);
     color: var(--text);
     line-height: 1.5;
   }
@@ -60,8 +64,11 @@
 
   h1 {
     margin: 0 0 8px;
-    font-size: clamp(2rem, 4vw, 3.4rem);
+    font-size: clamp(2rem, 4vw, 3.2rem);
     letter-spacing: -.04em;
+    background: linear-gradient(135deg, #ffffff 40%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 
   .subtitle {
@@ -70,13 +77,8 @@
     font-size: 1.05rem;
   }
 
-  .badge {
-    border: 1px solid var(--border);
-    background: rgba(139,124,246,.1);
-    color: #c9c2ff;
-    border-radius: 999px;
-    padding: 9px 14px;
-    white-space: nowrap;
+  .subtitle b {
+    color: var(--text);
   }
 
   .course-label {
@@ -86,6 +88,19 @@
     text-transform: uppercase;
     font-size: .78rem;
     margin-bottom: 7px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .course-label::before {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent2);
+    box-shadow: 0 0 8px var(--accent2);
   }
 
   .academic-info {
@@ -93,6 +108,11 @@
     color: var(--muted);
     line-height: 1.8;
     font-size: .88rem;
+    background: rgba(23, 26, 35, 0.7);
+    border: 1px solid var(--border);
+    padding: 12px 18px;
+    border-radius: 14px;
+    backdrop-filter: blur(10px);
   }
 
   .academic-info b {
@@ -100,67 +120,113 @@
   }
 
   /* =========================
-     CONTROLES
+     CONTROLS
   ========================= */
 
   .controls {
-      background: rgba(23, 26, 35, .92);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 14px 18px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 18px;
-      align-items: center;
-      box-shadow: 0 10px 30px rgba(0,0,0,.22);
-      margin-bottom: 22px;
+    background: rgba(23, 26, 35, .94);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 16px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: center;
+    box-shadow: 0 12px 35px rgba(0,0,0,.3);
+    margin-bottom: 24px;
 
-      position: sticky;
-      top: 12px;
-      z-index: 50;
+    position: sticky;
+    top: 12px;
+    z-index: 50;
 
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
 
-      transition:
-          padding .25s ease,
-      box-shadow .25s ease,
-      background .25s ease;
-  } 
+    transition: padding .25s ease, box-shadow .25s ease, background .25s ease;
+  }
 
   .controls.is-scrolled {
-      padding: 10px 14px;
-      background: rgba(15, 17, 23, .96);
-      box-shadow: 0 8px 24px rgba(0,0,0,.35);
+    padding: 12px 16px;
+    background: rgba(15, 17, 23, .98);
+    box-shadow: 0 10px 30px rgba(0,0,0,.45);
   }
 
   .control-group {
-    min-width: 210px;
+    min-width: 190px;
+    flex: 1 1 190px;
   }
 
   .control-title {
     font-weight: 700;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
+    font-size: .9rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
 
   .control-description {
-      color: var(--muted);
-      font-size: .82rem;
-      margin-bottom: 7px;
-      line-height: 1.35;
+    color: var(--muted);
+    font-size: .78rem;
+    margin-bottom: 7px;
+    line-height: 1.35;
   }
 
   input[type=range] {
-      width: 230px;
-      accent-color: var(--accent);
-      vertical-align: middle;
+    width: 100%;
+    accent-color: var(--accent);
+    vertical-align: middle;
+    cursor: pointer;
   }
+
   .nodes-value {
     display: inline-flex;
-    min-width: 38px;
+    min-width: 32px;
+    height: 24px;
+    align-items: center;
     justify-content: center;
     font-weight: 800;
     color: #fff;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: .85rem;
+  }
+
+  /* Aggregation Selector Pills */
+  .fn-selector-group {
+    display: flex;
+    background: #10141c;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 4px;
+    margin-top: 5px;
+  }
+
+  .fn-btn {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: .8rem;
+    font-weight: 700;
+    padding: 6px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all .2s ease;
+  }
+
+  .fn-btn:hover {
+    color: var(--text);
+    background: rgba(255,255,255,.05);
+    transform: none;
+  }
+
+  .fn-btn.active {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 2px 10px rgba(139,124,246,.4);
   }
 
   button {
@@ -168,13 +234,15 @@
     background: var(--panel2);
     color: var(--text);
     border-radius: 10px;
-    padding: 10px 15px;
+    padding: 10px 16px;
     cursor: pointer;
     font-weight: 700;
-    transition:
-      .18s transform,
-      .18s background,
-      .18s box-shadow;
+    font-size: .88rem;
+    transition: .18s transform, .18s background, .18s box-shadow;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
   }
 
   button:hover {
@@ -190,12 +258,14 @@
 
   button.primary:hover {
     background: #7969ee;
+    box-shadow: 0 4px 16px rgba(139,124,246,.4);
   }
 
   button:disabled {
-    opacity: .45;
+    opacity: .4;
     cursor: not-allowed;
     transform: none;
+    box-shadow: none;
   }
 
   .button-group {
@@ -203,75 +273,71 @@
     gap: 8px;
     flex-wrap: wrap;
     align-self: flex-end;
+    margin-left: auto;
   }
 
   /* =========================
-     LAYOUT PRINCIPAL
+     MAIN LAYOUT
   ========================= */
 
   .process-layout {
     display: grid;
-    grid-template-columns: 210px 1fr;
-    gap: 18px;
+    grid-template-columns: 220px 1fr;
+    gap: 20px;
     align-items: start;
   }
 
   .step-sidebar {
-      position: sticky;
-      top: 54vh;
-      transform: translateY(-50%);
-
-      background: rgba(23, 26, 35, .96);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 14px;
-
-      box-shadow: var(--shadow);
-
-      max-height: 70vh;
-      overflow-y: auto;
+    position: sticky;
+    top: 140px;
+    background: rgba(23, 26, 35, .96);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
   }
 
-   
   .sidebar-title {
-      font-weight: 850;
-      margin-bottom: 10px;
-      font-size: .9rem;
+    font-weight: 850;
+    margin-bottom: 12px;
+    font-size: .88rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
   }
-
 
   .phasebar {
     display: flex;
     flex-direction: column;
-    gap: 7px;
+    gap: 8px;
     margin: 0;
   }
 
   .phase {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 11px;
-      padding: 9px 10px 9px 13px;
-      text-align: left;
-      color: var(--muted);
-      font-size: .82rem;
-      position: relative;
-      transition:
-          .25s background,
-      .25s border,
-      .25s color,
-      .25s transform;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 10px 12px;
+    text-align: left;
+    color: var(--muted);
+    font-size: .84rem;
+    position: relative;
+    cursor: pointer;
+    transition: .22s background, .22s border, .22s color, .22s transform;
   }
 
-
   .phase:hover {
-    transform: translateX(2px);
+    transform: translateX(3px);
+    color: var(--text);
   }
 
   .phase.active {
     color: white;
     border-color: var(--accent);
-    background: rgba(139,124,246,.14);
+    background: rgba(139,124,246,.16);
+    font-weight: 700;
   }
 
   .phase.done {
@@ -287,7 +353,7 @@
     left: 0;
     top: 0;
     bottom: 0;
-    width: 3px;
+    width: 3.5px;
     border-radius: 3px;
     background: var(--accent);
   }
@@ -296,20 +362,28 @@
     background: var(--green);
   }
 
+  .phase-timing-sub {
+    display: block;
+    font-size: .7rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
   .process-main {
     min-width: 0;
   }
 
   /* =========================
-     TARJETAS
+     CARDS
   ========================= */
 
   .card {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 18px;
-    padding: 20px;
+    padding: 22px;
     box-shadow: var(--shadow);
+    margin-bottom: 22px;
   }
 
   .card h2,
@@ -319,35 +393,41 @@
 
   .explain {
     display: grid;
-    grid-template-columns: 1.3fr .7fr;
-    gap: 18px;
+    grid-template-columns: 1.35fr .65fr;
+    gap: 20px;
     margin-bottom: 22px;
   }
 
   .step-number {
     display: inline-flex;
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     align-items: center;
     justify-content: center;
     background: var(--accent);
     border-radius: 50%;
     font-weight: 900;
-    margin-right: 8px;
+    font-size: .95rem;
+    margin-right: 10px;
+    box-shadow: 0 0 14px var(--accent-glow);
   }
 
   .hint {
     color: var(--muted);
+    font-size: .9rem;
+    line-height: 1.5;
   }
 
   .formula {
     background: #0d1016;
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 11px 13px;
+    padding: 12px 14px;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     color: #d8dcff;
+    font-size: .84rem;
     overflow-x: auto;
+    border-left: 3px solid var(--accent);
   }
 
   .section-heading {
@@ -361,49 +441,133 @@
     background: rgba(244,201,93,.09);
     border: 1px solid rgba(244,201,93,.3);
     color: var(--yellow);
-    padding: 9px 12px;
+    padding: 8px 14px;
     border-radius: 9px;
     font-weight: 800;
     white-space: nowrap;
-    font-size: .85rem;
+    font-size: .82rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
   }
 
   /* =========================
-     CLUSTER
+     CLUSTER ARCHITECTURE
   ========================= */
 
   .cluster {
     display: grid;
-    grid-template-columns: repeat(auto-fit,minmax(190px,1fr));
-    gap: 12px;
-    margin-top: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px;
+    margin-top: 16px;
   }
 
   .cluster-node {
     background: #11151c;
     border: 1px solid #363d4c;
-    border-radius: 13px;
-    padding: 13px;
-    min-height: 150px;
+    border-radius: 14px;
+    padding: 14px;
+    min-height: 160px;
+    position: relative;
+    transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+  }
+
+  .cluster-node:hover {
+    border-color: #4f5970;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.3);
+  }
+
+  .cluster-node.active-worker {
+    border-color: var(--accent);
+    box-shadow: 0 0 18px rgba(139,124,246,.2);
+  }
+
+  .node-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #232936;
   }
 
   .cluster-node h3 {
-    margin: 0 0 8px;
+    margin: 0;
     font-size: .95rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .node-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: .7rem;
+    font-weight: 700;
+    color: #69d28f;
+    background: rgba(105,210,143,.12);
+    border: 1px solid rgba(105,210,143,.3);
+    border-radius: 999px;
+    padding: 3px 8px;
+  }
+
+  .status-led {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #69d28f;
+    box-shadow: 0 0 8px #69d28f;
+    animation: pulseLed 2s infinite ease-in-out;
+  }
+
+  @keyframes pulseLed {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .4; transform: scale(.85); }
+  }
+
+  /* Node Load Meter */
+  .node-load-wrap {
+    margin-bottom: 10px;
+  }
+
+  .node-load-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: .72rem;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .node-load-bar {
+    height: 5px;
+    background: #1c222e;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .node-load-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 999px;
+    transition: width .4s ease;
   }
 
   .task-list {
     display: grid;
-    gap: 7px;
+    gap: 6px;
   }
 
   .task {
     border-radius: 8px;
-    padding: 7px 9px;
+    padding: 7px 10px;
     font-family: ui-monospace, monospace;
     font-size: .76rem;
     background: #171c26;
     border: 1px solid #333b4c;
+    position: relative;
+    overflow: hidden;
+    transition: all .2s ease;
   }
 
   .task.mapper {
@@ -415,35 +579,128 @@
   }
 
   .task-label {
-    font-weight: 900;
+    font-weight: 850;
+    display: flex;
+    justify-content: space-between;
   }
 
   .task-detail {
     color: var(--muted);
     margin-top: 2px;
-  }
-
-  .cluster-legend {
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-    color: var(--muted);
-    font-size: .78rem;
-    margin-top: 12px;
+    font-size: .7rem;
   }
 
   .mapping-explanation {
-    margin-top: 12px;
+    margin-top: 14px;
     background: #10141b;
     border: 1px dashed #3b4353;
-    border-radius: 9px;
-    padding: 10px 12px;
+    border-radius: 11px;
+    padding: 12px 14px;
     color: var(--muted);
-    font-size: .85rem;
+    font-size: .84rem;
+    line-height: 1.5;
+  }
+
+  .mapping-explanation b {
+    color: var(--text);
   }
 
   /* =========================
-     FLUJO
+     STATISTICS DASHBOARD
+  ========================= */
+
+  .stats-section {
+    margin-top: 22px;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+  }
+
+  .stat-card {
+    background: #11151c;
+    border: 1px solid #303747;
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: border-color .2s ease, transform .2s ease;
+  }
+
+  .stat-card:hover {
+    border-color: #49546d;
+    transform: translateY(-2px);
+  }
+
+  .stat-title {
+    font-size: .76rem;
+    color: var(--muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .stat-value {
+    font-size: 1.6rem;
+    font-weight: 900;
+    margin: 8px 0 4px;
+    letter-spacing: -.02em;
+    color: var(--text);
+  }
+
+  .stat-detail {
+    font-size: .74rem;
+    color: var(--muted);
+    line-height: 1.35;
+  }
+
+  .stat-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-size: .68rem;
+    font-weight: 800;
+    margin-top: 4px;
+  }
+
+  .stat-badge.good {
+    background: rgba(105,210,143,.15);
+    color: #69d28f;
+  }
+
+  .stat-badge.accent {
+    background: rgba(139,124,246,.15);
+    color: #c9c2ff;
+  }
+
+  .stat-badge.warn {
+    background: rgba(244,201,93,.15);
+    color: var(--yellow);
+  }
+
+  .stat-bar {
+    height: 4px;
+    background: #1b212c;
+    border-radius: 999px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+
+  .stat-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width .4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* =========================
+     STEP-BY-STEP VERTICAL FLOW
   ========================= */
 
   .vertical-flow {
@@ -459,65 +716,175 @@
   }
 
   .stage-marker {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      padding: 7px 11px;
-      border-radius: 999px;
-      background: rgba(139,124,246,.12);
-      border: 1px solid rgba(139,124,246,.3);
-      color: #d8d2ff;
-      font-size: .75rem;
-      font-weight: 850;
-      white-space: nowrap;
-      box-shadow: 0 4px 14px rgba(139,124,246,.08);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: rgba(139,124,246,.12);
+    border: 1px solid rgba(139,124,246,.3);
+    color: #d8d2ff;
+    font-size: .78rem;
+    font-weight: 850;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(139,124,246,.08);
   }
 
   .stage-marker::before {
-      content: "";
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 10px rgba(139,124,246,.7);
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px rgba(139,124,246,.8);
   }
 
-  
-
   .stage-hidden {
-    display: none;
+    display: none !important;
   }
 
   .stage-visible {
     display: block;
-    animation: revealStage .42s ease-out;
+    animation: revealStage .45s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .current-stage {
     border-color: var(--accent) !important;
-    box-shadow:
-      0 0 0 1px rgba(139,124,246,.16),
-      var(--shadow);
+    box-shadow: 0 0 0 1px rgba(139,124,246,.25), 0 14px 40px rgba(0,0,0,.4) !important;
   }
+
+  /* =========================================================
+     ANIMATED FLOW CONNECTORS & ACTIVE DATA HIGHWAY
+  ========================================================= */
 
   .flow-connector {
-    height: 42px;
+    position: relative;
+    margin: 12px 0;
+    padding: 12px 16px;
+    background: rgba(16, 20, 28, 0.75);
+    border: 1px dashed rgba(139, 124, 246, 0.3);
+    border-radius: 14px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: #737d91;
-    font-size: 2rem;
-    animation: connectorAppear .35s ease-out;
+    gap: 8px;
+    overflow: hidden;
+    transition: all .35s ease;
   }
 
-  .stage-wide {
-      background: #11151c;
-      border: 1px solid var(--border);
-      border-radius: 13px;
-      padding: 15px;
+  .flow-connector.in-transit {
+    border-color: var(--accent);
+    background: rgba(139, 124, 246, 0.12);
+    box-shadow: 0 0 25px rgba(139, 124, 246, 0.28);
+    transform: scale(1.008);
+  }
 
-      scroll-margin-top: 130px;
-  } 
+  .connector-pipe {
+    width: 100%;
+    height: 38px;
+    position: relative;
+    background: rgba(11, 14, 20, 0.85);
+    border: 1px solid rgba(139, 124, 246, 0.22);
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+  }
+
+  .pipe-surge-beam {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent 0%, rgba(139, 124, 246, 0.5) 50%, transparent 100%);
+    pointer-events: none;
+  }
+
+  .flow-connector.in-transit .pipe-surge-beam {
+    animation: surgeBeam 0.8s ease-out;
+  }
+
+  @keyframes surgeBeam {
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+
+  .pipe-packets-track {
+    display: flex;
+    gap: 12px;
+    width: max-content;
+    animation: streamPackets 18s linear infinite;
+  }
+
+  .flow-connector.in-transit .pipe-packets-track {
+    animation-duration: 4.5s;
+  }
+
+  @keyframes streamPackets {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  .packet-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 11px;
+    background: rgba(23, 28, 38, 0.95);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-family: ui-monospace, monospace;
+    font-size: .74rem;
+    color: #e2e8f0;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(0,0,0,.3);
+  }
+
+  .packet-pill .packet-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  .connector-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: .76rem;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .status-pulse-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent2);
+    box-shadow: 0 0 8px var(--accent2);
+    animation: pulseLed 1.4s infinite ease-in-out;
+  }
+
+  .connector-arrow-down {
+    color: var(--accent);
+    font-size: .75rem;
+  }
+
+  /* =========================
+     STAGE CONTENTS
+  ========================= */
+
+  .stage-wide {
+    background: #11151c;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    scroll-margin-top: 130px;
+    transition: all .3s ease;
+  }
 
   .stage-title-row {
     display: flex;
@@ -526,49 +893,102 @@
     align-items: center;
   }
 
+  .stage-tags-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
   .stage-title-row .tag {
     color: var(--muted);
     font-size: .78rem;
+    background: #181d28;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid #2d3444;
+  }
+
+  .stage-time-tag {
+    background: rgba(139,124,246,.14) !important;
+    border-color: rgba(139,124,246,.35) !important;
+    color: #d8d2ff !important;
+    font-weight: 700 !important;
   }
 
   .stage-title {
     font-weight: 850;
-    font-size: 1.05rem;
+    font-size: 1.1rem;
+    color: var(--text);
   }
 
   .stage-sub {
     color: var(--muted);
-    font-size: .78rem;
-    margin-bottom: 12px;
+    font-size: .82rem;
+    margin: 4px 0 14px;
+  }
+
+  /* Cascade entrance for cards within stage */
+  @keyframes cascadeReveal {
+    from {
+      opacity: 0;
+      transform: translateY(16px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .cascade-item {
+    animation: cascadeReveal .4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }
 
   /* =========================
-     DATOS
+     DATA & KV PAIRS
   ========================= */
 
   .results {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+    gap: 12px;
   }
 
   .result {
-    background:
-      linear-gradient(145deg, rgba(105,210,143,.11), #11151b);
+    background: linear-gradient(145deg, rgba(105,210,143,.1), #11151b);
     border: 1px solid #35694d;
-    border-radius: 11px;
-    padding: 12px;
+    border-radius: 12px;
+    padding: 14px;
+    transition: transform .2s ease;
+  }
+
+  .result:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,.3);
   }
 
   .result .city {
     color: var(--accent2);
     font-weight: 900;
+    font-size: .95rem;
+    margin-bottom: 4px;
   }
 
   .result .temp {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     font-weight: 900;
     color: var(--yellow);
+    letter-spacing: -.02em;
+  }
+
+  .result .sub-stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(255,255,255,.08);
+    font-size: .7rem;
+    color: var(--muted);
   }
 
   .record,
@@ -576,10 +996,19 @@
     background: #11141b;
     border: 1px solid #2c3342;
     border-radius: 8px;
-    padding: 7px 9px;
+    padding: 7px 10px;
     margin: 6px 0;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: .78rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background .2s ease;
+  }
+
+  .record:hover,
+  .kv:hover {
+    background: #171c26;
   }
 
   .record .city,
@@ -603,44 +1032,54 @@
 
   .split-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit,minmax(180px,1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
     margin-top: 12px;
   }
 
   .split-card {
-    background: #11151c;
+    background: #131722;
     border: 1px solid #333a49;
-    border-radius: 10px;
-    padding: 10px;
+    border-radius: 11px;
+    padding: 12px;
   }
 
   .split-card h4 {
-    margin: 0 0 7px;
-    font-size: .82rem;
+    margin: 0 0 8px;
+    font-size: .84rem;
+    color: #cad1dc;
   }
 
   .split-record {
-    font-family: ui-monospace,monospace;
+    font-family: ui-monospace, monospace;
     font-size: .76rem;
     color: #cfd5df;
-    padding: 3px 0;
-    border-bottom: 1px dashed #2d3441;
+    padding: 4px 0;
+    border-bottom: 1px dashed #282f3c;
+  }
+
+  .split-record:last-child {
+    border-bottom: none;
   }
 
   .mapper-grid,
   .reducer-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit,minmax(190px,1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
     margin-top: 12px;
   }
 
   .mini-task {
     background: #151a23;
     border: 1px solid #333b4a;
-    border-radius: 10px;
-    padding: 10px;
+    border-radius: 12px;
+    padding: 12px;
+    transition: transform .2s ease;
+  }
+
+  .mini-task:hover {
+    transform: translateY(-2px);
   }
 
   .mini-task.mapper {
@@ -652,36 +1091,277 @@
   }
 
   .mini-task h4 {
-    margin: 0 0 7px;
-    font-size: .84rem;
+    margin: 0 0 8px;
+    font-size: .85rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
 
   .shuffle-grid {
     display: grid;
-    gap: 7px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
   }
 
   .shuffle-group {
     border: 1px solid #3b4251;
-    border-radius: 9px;
-    padding: 8px;
+    border-radius: 11px;
+    padding: 12px;
     background: #12151c;
+    position: relative;
+    overflow: hidden;
   }
 
   .shuffle-group .key {
     color: var(--accent2);
     font-weight: 900;
+    font-size: .95rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .route-badge {
+    font-size: .7rem;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-weight: 700;
+  }
+
+  .route-badge.remote {
+    background: rgba(251,146,60,.15);
+    border: 1px solid rgba(251,146,60,.35);
+    color: var(--orange);
   }
 
   .arrowline {
-    color: #70798c;
+    color: #8c96ab;
     text-align: center;
+    font-size: .78rem;
+    margin: 8px 0;
+    padding: 4px;
+    background: #171c26;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .shuffle-packet-anim {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--yellow);
+    box-shadow: 0 0 8px var(--yellow);
+    animation: packetMove 1s infinite alternate ease-in-out;
+  }
+
+  @keyframes packetMove {
+    from { transform: translateX(-4px); }
+    to { transform: translateX(4px); }
+  }
+
+  /* =========================================================
+     TIMING BREAKDOWN & WATERFALL TIMELINE AT THE END
+  ========================================================= */
+
+  .timing-section {
+    background: linear-gradient(180deg, #131722 0%, #0d1017 100%);
+    border: 1px solid var(--accent) !important;
+    box-shadow: 0 0 30px rgba(139, 124, 246, 0.25);
+    margin-top: 16px;
+  }
+
+  .timing-hero-banner {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    background: linear-gradient(135deg, rgba(139,124,246,.15) 0%, rgba(95,209,185,.08) 100%);
+    border: 1px solid rgba(139,124,246,.35);
+    border-radius: 14px;
+    padding: 18px 22px;
+    margin: 14px 0 20px;
+  }
+
+  .timing-hero-left h3 {
+    margin: 0 0 4px;
+    font-size: .88rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+
+  .timing-total-val {
+    font-size: 2.3rem;
+    font-weight: 900;
+    color: var(--accent2);
+    letter-spacing: -.03em;
+    line-height: 1.1;
+  }
+
+  .timing-hero-right {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .timing-summary-badge {
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .timing-summary-badge.speedup {
+    background: rgba(139,124,246,.2);
+    border: 1px solid var(--accent);
+    color: #e2dcff;
+  }
+
+  .timing-summary-badge.savings {
+    background: rgba(105,210,143,.18);
+    border: 1px solid var(--green);
+    color: #c5f3dc;
+  }
+
+  /* Waterfall Timeline Bar */
+  .waterfall-wrap {
+    margin: 18px 0 24px;
+  }
+
+  .waterfall-label-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: .78rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+
+  .waterfall-bar {
+    display: flex;
+    height: 38px;
+    border-radius: 11px;
+    overflow: hidden;
+    background: #0b0e14;
+    border: 1px solid var(--border);
+    box-shadow: inset 0 2px 8px rgba(0,0,0,.45);
+  }
+
+  .waterfall-segment {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .74rem;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,.8);
+    transition: width .45s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+    white-space: nowrap;
+    padding: 0 4px;
+    position: relative;
+    cursor: pointer;
+  }
+
+  .waterfall-segment:hover {
+    filter: brightness(1.2);
+  }
+
+  .seg-input { background: linear-gradient(135deg, #475569, #64748b); }
+  .seg-split { background: linear-gradient(135deg, #0284c7, #38bdf8); }
+  .seg-map { background: linear-gradient(135deg, #2563eb, #6ea8fe); }
+  .seg-shuffle { background: linear-gradient(135deg, #ea580c, #fb923c); }
+  .seg-reduce { background: linear-gradient(135deg, #16a34a, #69d28f); }
+  .seg-output { background: linear-gradient(135deg, #7c3aed, #8b7cf6); }
+
+  /* Stage timing breakdown grid */
+  .stage-timing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+
+  .stage-timing-card {
+    background: #11151c;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform .2s ease, border-color .2s ease;
+  }
+
+  .stage-timing-card:hover {
+    border-color: #4c5770;
+    transform: translateY(-2px);
+  }
+
+  .stage-timing-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .stage-timing-name {
     font-size: .8rem;
-    margin: 2px 0;
+    font-weight: 800;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .stage-timing-pct {
+    font-size: .72rem;
+    font-weight: 800;
+    color: var(--accent2);
+    background: rgba(95,209,185,.12);
+    padding: 2px 7px;
+    border-radius: 999px;
+  }
+
+  .stage-timing-ms {
+    font-size: 1.5rem;
+    font-weight: 900;
+    margin: 4px 0 6px;
+    color: var(--yellow);
+    letter-spacing: -.02em;
+  }
+
+  .stage-timing-desc {
+    font-size: .73rem;
+    color: var(--muted);
+    line-height: 1.35;
+  }
+
+  .stage-timing-minibar {
+    height: 4px;
+    background: #1a202c;
+    border-radius: 999px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+
+  .stage-timing-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width .45s ease;
   }
 
   /* =========================
-     TABLA
+     TABLE
   ========================= */
 
   .dataset {
@@ -695,7 +1375,7 @@
 
   th,
   td {
-    padding: 9px 10px;
+    padding: 10px 12px;
     border-bottom: 1px solid var(--border);
     text-align: left;
   }
@@ -703,6 +1383,8 @@
   th {
     color: var(--muted);
     font-size: .82rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
   }
 
   td {
@@ -712,9 +1394,9 @@
 
   .legend {
     display: flex;
-    gap: 14px;
+    gap: 16px;
     flex-wrap: wrap;
-    margin-top: 12px;
+    margin-top: 14px;
     color: var(--muted);
     font-size: .82rem;
   }
@@ -724,7 +1406,7 @@
     height: 9px;
     display: inline-block;
     border-radius: 50%;
-    margin-right: 5px;
+    margin-right: 6px;
   }
 
   .dot.a {
@@ -738,55 +1420,41 @@
   .footer-note {
     color: var(--muted);
     text-align: center;
-    margin-top: 30px;
+    margin-top: 36px;
     font-size: .82rem;
+    line-height: 1.6;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   /* =========================
-     ANIMACIONES
+     ANIMATIONS
   ========================= */
 
   @keyframes revealStage {
     from {
       opacity: 0;
-      transform: translateY(18px);
+      transform: translateY(20px);
     }
-
     to {
       opacity: 1;
       transform: translateY(0);
     }
   }
 
-  @keyframes connectorAppear {
-    from {
-      opacity: 0;
-      transform: scaleY(.5);
-    }
-
-    to {
-      opacity: 1;
-      transform: scaleY(1);
-    }
-  }
-
   .stage-focus {
-    animation:
-      revealStage .42s ease-out,
-      stageHighlight 1.2s ease-out;
+    animation: revealStage .42s ease-out, stageHighlight 1.4s ease-out;
   }
 
   @keyframes stageHighlight {
     0% {
       border-color: var(--accent);
-      box-shadow:
-        0 0 0 3px rgba(139,124,246,.25),
-        0 0 35px rgba(139,124,246,.18);
+      box-shadow: 0 0 0 3px rgba(139,124,246,.35), 0 0 40px rgba(139,124,246,.25);
     }
-
     100% {
       border-color: var(--border);
-      box-shadow: none;
+      box-shadow: var(--shadow);
     }
   }
 
@@ -801,13 +1469,13 @@
 
     .step-sidebar {
       position: sticky;
-      top: 120px;
+      top: 110px;
       z-index: 40;
     }
 
     .phasebar {
       display: grid;
-      grid-template-columns: repeat(3,1fr);
+      grid-template-columns: repeat(3, 1fr);
     }
 
     .academic-info {
@@ -832,7 +1500,7 @@
     }
 
     .phasebar {
-      grid-template-columns: repeat(2,1fr);
+      grid-template-columns: repeat(2, 1fr);
     }
 
     .controls {
@@ -841,10 +1509,7 @@
 
     .control-group {
       width: 100%;
-    }
-
-    input[type=range] {
-      width: 100%;
+      min-width: 100%;
     }
 
     .button-group {
@@ -875,48 +1540,53 @@
   <header>
     <div>
       <div class="course-label">
-        Procesamiento de Datos a Gran Escala
+        Large-Scale Data Processing
       </div>
 
-      <h1>Simulador didáctico de MapReduce</h1>
+      <h1>Interactive MapReduce Simulator</h1>
 
       <div class="subtitle">
-        Visualiza cómo se dividen los datos y cómo las tareas
-        <b>Mapper</b> y <b>Reducer</b> se distribuyen entre los nodos
-        de un clúster.
+        Objective: Explore how datasets are split into chunks and how logical
+        <b>Mapper</b> and <b>Reducer</b> tasks are scheduled across
+        physical cluster nodes.
       </div>
     </div>
 
     <div class="academic-info">
       <div>
         <b>Lorenzo Ramirez Calderon</b>
-        <span>(ID:20550074)</span>
+        <span>(ID: 20550074)</span>
       </div>
 
       <div>
-        Ingenieria de Sistemas
+        Systems Engineering
       </div>
 
       <div>
-        Docente: John Jairo Corredor
+        Instructor: John Jairo Corredor
+      </div>
+
+      <div>
+          Created with support of Google Gemini
       </div>
     </div>
   </header>
 
   <!-- =========================
-       CONTROLES
+       CONTROLS
   ========================= -->
 
-  <section class="controls">
+  <section class="controls" id="controlsPanel">
 
+    <!-- Nodes Slider -->
     <div class="control-group">
       <div class="control-title">
-        Nodos físicos:
+        <span>Physical Nodes:</span>
         <span class="nodes-value" id="nodesValue">3</span>
       </div>
 
       <div class="control-description">
-        Máximo 5. Representan las máquinas disponibles en el clúster.
+        Max 5. Physical server machines available in the cluster.
       </div>
 
       <input
@@ -929,15 +1599,15 @@
       >
     </div>
 
-
+    <!-- Mappers Slider -->
     <div class="control-group">
       <div class="control-title">
-        Tareas Mapper:
+        <span>Mapper Tasks:</span>
         <span class="nodes-value" id="mappersValue">4</span>
       </div>
 
       <div class="control-description">
-        Número de tareas lógicas de Map; no tiene que coincidir con los nodos.
+        Logical Map tasks; decoupled from physical node count.
       </div>
 
       <input
@@ -950,15 +1620,15 @@
       >
     </div>
 
-
+    <!-- Reducers Slider -->
     <div class="control-group">
       <div class="control-title">
-        Tareas Reducer:
+        <span>Reducer Tasks:</span>
         <span class="nodes-value" id="reducersValue">2</span>
       </div>
 
       <div class="control-description">
-        Número de tareas lógicas de Reduce; también es independiente de los nodos.
+        Logical Reduce tasks; also independent of physical nodes.
       </div>
 
       <input
@@ -971,258 +1641,200 @@
       >
     </div>
 
+    <!-- Aggregation Function Selector -->
+    <div class="control-group">
+      <div class="control-title">
+        <span>Aggregation Function:</span>
+        <span class="nodes-value" id="fnValueLabel" style="width: auto; padding: 0 8px; font-size: .75rem;">MAX</span>
+      </div>
 
+      <div class="control-description">
+        Reduce operator applied to grouped city values.
+      </div>
+
+      <div class="fn-selector-group" id="fnSelector">
+        <button type="button" class="fn-btn active" data-fn="max">Max</button>
+        <button type="button" class="fn-btn" data-fn="min">Min</button>
+        <button type="button" class="fn-btn" data-fn="avg">Average</button>
+      </div>
+    </div>
+
+    <!-- Navigation Buttons -->
     <div class="button-group">
-
-      <button id="prevBtn">
-        ← Anterior
+      <button id="prevBtn" title="Go back to previous stage (Keyboard: ←)">
+        ← Previous
       </button>
 
-      <button id="nextBtn" class="primary">
-        Siguiente →
+      <button id="nextBtn" class="primary" title="Advance to next stage (Keyboard: →)">
+        Next →
       </button>
 
-      <button id="playBtn">
-        ▶ Ejecutar todo
+      <button id="playBtn" title="Automatically advance stages (Keyboard: Space)">
+        ▶ Run All
       </button>
 
-      <button id="resetBtn">
-        ↺ Reiniciar
+      <button id="resetBtn" title="Reset simulator to initial state (Keyboard: R)">
+        ↺ Reset
       </button>
-
     </div>
 
   </section>
 
 
   <!-- =========================
-       PROCESO
+       PROCESS LAYOUT
   ========================= -->
 
   <div class="process-layout">
 
+    <!-- Step Sidebar -->
     <aside class="step-sidebar">
-
       <div class="sidebar-title">
-        Flujo MapReduce
+        MapReduce Pipeline
       </div>
 
-      <div id="phasebar"></div>
-
+      <div id="phasebar" class="phasebar"></div>
     </aside>
 
-
+    <!-- Main Content -->
     <main class="process-main">
 
-      <!-- EXPLICACIÓN -->
-
+      <!-- EXPLANATION -->
       <section class="explain">
-
         <div class="card" id="explanation"></div>
 
         <div class="card">
-
-          <h3>
-            Idea clave
-          </h3>
-
+          <h3>Key Concept</h3>
           <p id="keyIdea" class="hint"></p>
-
-          <div
-            class="formula"
-            id="formula"
-          ></div>
-
+          <div class="formula" id="formula"></div>
         </div>
-
       </section>
 
-
-      <!-- CLUSTER -->
-
+      <!-- CLUSTER ARCHITECTURE -->
       <section class="card">
-
         <div class="section-heading">
-
           <div>
-
-            <h2>
-              Arquitectura del clúster
-            </h2>
-
+            <h2>Cluster Architecture & Task Scheduling</h2>
             <p class="hint">
-              Las tareas lógicas se asignan a los nodos físicos.
-              Cambia los controles de arriba para ver que no existe
-              una relación 1:1.
+              Logical tasks are scheduled onto physical worker machines.
+              Adjust the sliders above to see that there is no fixed 1:1 coupling.
             </p>
-
           </div>
 
           <div class="important-note">
-            Nodos ≠ tareas
+            Nodes ≠ Tasks
           </div>
-
         </div>
 
         <div id="clusterView"></div>
-
       </section>
 
-
-      <!-- FLUJO PASO A PASO -->
-
-      <section
-        class="card vertical-flow"
-        id="verticalFlow"
-      >
-
-        <div class="flow-intro">
-
+      <!-- CLUSTER STATISTICS DASHBOARD -->
+      <section class="card stats-section">
+        <div class="section-heading">
           <div>
-
-            <h2>
-              Proceso paso a paso
-            </h2>
-
+            <h2>Cluster Performance & Real-Time Statistics</h2>
             <p class="hint">
-              Presiona <b>Siguiente →</b> para revelar una etapa.
-              Las anteriores permanecen visibles.
+              Live distributed metrics recomputed dynamically based on cluster nodes,
+              logical mappers, and reducers.
             </p>
+          </div>
+          <div class="important-note" style="background: rgba(110,168,254,.1); border-color: rgba(110,168,254,.3); color: var(--blue);">
+            Live Metrics
+          </div>
+        </div>
 
+        <div id="statsView" class="stats-grid"></div>
+      </section>
+
+      <!-- STEP-BY-STEP FLOW -->
+      <section class="card vertical-flow" id="verticalFlow">
+        <div class="flow-intro">
+          <div>
+            <h2>Step-by-Step Pipeline Execution</h2>
+            <p class="hint">
+              Press <b>Next →</b> or use keyboard arrow keys to reveal each pipeline stage.
+              Observe animated data streams and per-stage latency metrics.
+            </p>
           </div>
 
-          <div
-            class="stage-marker"
-            id="currentStageMarker"
-          >
-            Etapa 1 de 6 · Entrada
+          <div class="stage-marker" id="currentStageMarker">
+            Stage 1 of 6 · Input
           </div>
-
         </div>
 
+        <!-- Stage 1: Input -->
+        <div id="inputStage" class="stage-hidden"></div>
 
-        <div
-          id="inputStage"
-          class="stage-hidden"
-        ></div>
+        <!-- Connector 1 -->
+        <div id="connector1" class="flow-connector stage-hidden" data-connector="1"></div>
 
+        <!-- Stage 2: Split -->
+        <div id="splitStage" class="stage-hidden"></div>
 
-        <div
-          id="connector1"
-          class="flow-connector stage-hidden"
-        >
-          ↓
-        </div>
+        <!-- Connector 2 -->
+        <div id="connector2" class="flow-connector stage-hidden" data-connector="2"></div>
 
+        <!-- Stage 3: Map -->
+        <div id="mapStage" class="stage-hidden"></div>
 
-        <div
-          id="splitStage"
-          class="stage-hidden"
-        ></div>
+        <!-- Connector 3 -->
+        <div id="connector3" class="flow-connector stage-hidden" data-connector="3"></div>
 
+        <!-- Stage 4: Shuffle -->
+        <div id="shuffleStage" class="stage-hidden"></div>
 
-        <div
-          id="connector2"
-          class="flow-connector stage-hidden"
-        >
-          ↓
-        </div>
+        <!-- Connector 4 -->
+        <div id="connector4" class="flow-connector stage-hidden" data-connector="4"></div>
 
+        <!-- Stage 5: Reduce -->
+        <div id="reduceStage" class="stage-hidden"></div>
 
-        <div
-          id="mapStage"
-          class="stage-hidden"
-        ></div>
+        <!-- Connector 5 -->
+        <div id="connector5" class="flow-connector stage-hidden" data-connector="5"></div>
 
+        <!-- Stage 6: Output -->
+        <div id="outputStage" class="stage-hidden"></div>
 
-        <div
-          id="connector3"
-          class="flow-connector stage-hidden"
-        >
-          ↓
-        </div>
+        <!-- Connector 6 (Completion connector) -->
+        <div id="connector6" class="flow-connector stage-hidden" data-connector="6"></div>
 
-
-        <div
-          id="shuffleStage"
-          class="stage-hidden"
-        ></div>
-
-
-        <div
-          id="connector4"
-          class="flow-connector stage-hidden"
-        >
-          ↓
-        </div>
-
-
-        <div
-          id="reduceStage"
-          class="stage-hidden"
-        ></div>
-
-
-        <div
-          id="connector5"
-          class="flow-connector stage-hidden"
-        >
-          ↓
-        </div>
-
-
-        <div
-          id="outputStage"
-          class="stage-hidden"
-        ></div>
+        <!-- FINAL STAGE: TIMING BREAKDOWN & WATERFALL TIMELINE -->
+        <div id="timingStage" class="stage-wide timing-section stage-hidden"></div>
 
       </section>
 
-
-      <!-- DATASET -->
-
+      <!-- DATASET TABLE -->
       <section class="card dataset">
-
-        <h2>
-          Datos de entrada completos
-        </h2>
-
+        <h2>Complete Input Dataset</h2>
         <p class="hint">
-          Cada fila representa una observación
-          <code>&lt;ciudad, temperatura&gt;</code>.
-          La ciudad es la <b>clave</b> y la temperatura es el
-          <b>valor</b>.
+          Each raw record represents an observation
+          <code>&lt;city, temperature&gt;</code>.
+          The city is the <b>key</b> and temperature is the <b>value</b>.
         </p>
 
         <div id="datasetTable"></div>
 
         <div class="legend">
-
           <span>
             <span class="dot a"></span>
-            Clave: ciudad
+            Key: City
           </span>
 
           <span>
             <span class="dot b"></span>
-            Valor: temperatura
+            Value: Temperature (°C)
           </span>
-
         </div>
-
       </section>
 
     </main>
-
   </div>
 
-
+  <!-- FOOTER -->
   <div class="footer-note">
-
-    Simulador educativo: la distribución se simplifica para visualizar
-    el concepto. En Hadoop real, la cantidad de tareas depende de los
-    bloques, configuración y recursos del clúster.
-
+    Educational simulator: task scheduling and network transfer are modeled to illustrate distributed computing principles.
+    In real Hadoop/Spark clusters, execution parameters depend on HDFS block size (e.g., 128MB), input formats, resource managers (YARN/Kubernetes), and node hardware capacity.
   </div>
 
 </div>
@@ -1231,289 +1843,291 @@
 <script>
 
 /* =========================================================
-   DATOS
+   DATASET
 ========================================================= */
 
 const DATA = [
   ["Toronto", 18],
-  ["Londres", 25],
-  ["Tokio", 31],
+  ["London", 25],
+  ["Tokyo", 31],
   ["Toronto", 22],
-  ["Nueva York", 28],
-  ["Londres", 27],
-  ["Tokio", 38],
+  ["New York", 28],
+  ["London", 27],
+  ["Tokyo", 38],
   ["Toronto", 32],
-  ["Nueva York", 33],
-  ["Londres", 21],
-  ["Tokio", 34],
-  ["Nueva York", 29]
+  ["New York", 33],
+  ["London", 21],
+  ["Tokyo", 34],
+  ["New York", 29]
 ];
 
 
 /* =========================================================
-   ETAPAS
-========================================================= */
-
-const phases = [
-
-  {
-    name: "Entrada",
-    title: "1. Entrada — tenemos todos los registros",
-
-    text:
-      "El trabajo recibe los datos de entrada. Cada registro contiene " +
-      "una ciudad y una temperatura. Todavía no existen Mappers ni " +
-      "Reducers trabajando sobre estos datos.",
-
-    idea:
-      "La entrada es el problema completo. Nuestro objetivo será " +
-      "transformar 12 observaciones en un máximo por ciudad.",
-
-    formula:
-      "<ciudad, temperatura>"
-  },
-
-
-  {
-    name: "Dividir",
-    title: "2. División — los datos se separan en Input Splits",
-
-    text:
-      "La entrada se divide en fragmentos que serán procesados por " +
-      "tareas Mapper. Importante: la cantidad de nodos físicos NO " +
-      "determina directamente cuántas tareas Mapper existen.",
-
-    idea:
-      "Un clúster con 3 nodos puede ejecutar, por ejemplo, 4 tareas " +
-      "Mapper. Algunas máquinas pueden ejecutar más de una tarea.",
-
-    formula:
-      "Datos → Input Split 1 | Split 2 | ... | Split M"
-  },
-
-
-  {
-    name: "Map",
-    title: "3. Map — cada tarea produce pares clave/valor",
-
-    text:
-      "Cada tarea Mapper procesa su Input Split y ejecuta la función " +
-      "map(). En este ejemplo simplemente emite la ciudad como clave " +
-      "y la temperatura como valor.",
-
-    idea:
-      "Map transforma registros. No calcula todavía el máximo de " +
-      "cada ciudad.",
-
-    formula:
-      "map(ciudad, temperatura) → <ciudad, temperatura>"
-  },
-
-
-  {
-    name: "Shuffle",
-    title: "4. Shuffle — los pares se agrupan por clave",
-
-    text:
-      "Después de Map, el sistema particiona y reorganiza los pares. " +
-      "Todos los valores de una misma ciudad deben llegar al mismo Reducer.",
-
-    idea:
-      "Shuffle es la frontera lógica entre Map y Reduce: redistribuye " +
-      "los datos según la clave.",
-
-    formula:
-      "Toronto → [18, 22, 32] | Tokio → [31, 38, 34] | ..."
-  },
-
-
-  {
-    name: "Reduce",
-    title: "5. Reduce — cada tarea calcula el máximo de sus claves",
-
-    text:
-      "Cada Reducer recibe uno o varios grupos de claves y aplica " +
-      "max() sobre los valores de cada grupo.",
-
-    idea:
-      "La cantidad de Reducers también es independiente de la " +
-      "cantidad de nodos físicos.",
-
-    formula:
-      "reduce(ciudad, valores) → <ciudad, max(valores)>"
-  },
-
-
-  {
-    name: "Resultado",
-    title: "6. Resultado — obtenemos el máximo por ciudad",
-
-    text:
-      "Cada tarea Reducer produce resultados. Estos resultados pueden " +
-      "escribirse en almacenamiento distribuido como archivos de salida " +
-      "separados por Reducer.",
-
-    idea:
-      "El resultado final es un resumen: una temperatura máxima por " +
-      "cada ciudad.",
-
-    formula:
-      "Toronto → 32°C | Londres → 27°C | Tokio → 38°C | Nueva York → 33°C"
-  }
-
-];
-
-
-/* =========================================================
-   ESTADO
+   STATE
 ========================================================= */
 
 let phase = 0;
-
 let nodeCount = 3;
 let mapperCount = 4;
 let reducerCount = 2;
-
+let aggregationMode = "max"; // 'max' | 'min' | 'avg'
 let timer = null;
 
 
 /* =========================================================
-   FUNCIONES MAPREDUCE
+   DYNAMIC TIMINGS & METRICS MODEL
 ========================================================= */
 
-function distributeTasks(count) {
+function getStageTimings() {
+  // 1. Input Phase: fixed baseline I/O read
+  const inputTime = 25;
 
-  return Array.from(
-    { length: nodeCount },
-    () => []
-  );
+  // 2. Split Phase: chunking into mapperCount splits
+  const splitTime = 12 + (mapperCount * 3);
 
-}
+  // 3. Map Phase: Map waves * base task time (120ms)
+  const mapWaves = Math.ceil(mapperCount / nodeCount);
+  const mapTime = mapWaves * 120;
 
-
-function assignTasks(count, prefix) {
-
-  const nodes = distributeTasks(count);
-
-  for (let i = 0; i < count; i++) {
-
-    nodes[i % nodeCount].push(
-      `${prefix}${i + 1}`
-    );
-
+  // 4. Shuffle Phase: cross-node remote vs local transfers
+  let remoteTransfers = 0;
+  let localTransfers = 0;
+  for (let m = 0; m < mapperCount; m++) {
+    const mapperNode = m % nodeCount;
+    for (let r = 0; r < reducerCount; r++) {
+      const reducerNode = r % nodeCount;
+      if (mapperNode === reducerNode) {
+        localTransfers++;
+      } else {
+        remoteTransfers++;
+      }
+    }
   }
+  const totalStreams = mapperCount * reducerCount;
+  const shuffleTime = 25 + (remoteTransfers * 15) + (localTransfers * 3);
 
-  return nodes;
+  // 5. Reduce Phase: Reduce waves * base task time (95ms)
+  const reduceWaves = Math.ceil(reducerCount / nodeCount);
+  const reduceTime = reduceWaves * 95;
 
-}
+  // 6. Output Phase: writing final partitions to distributed storage
+  const outputTime = 16 + (reducerCount * 6);
 
+  // Total Job Execution Time
+  const totalTime = inputTime + splitTime + mapTime + shuffleTime + reduceTime + outputTime;
 
-function splitData() {
+  // Single-node baseline (sequential on 1 machine without distribution)
+  const seqMapTime = mapperCount * 120;
+  const seqShuffleTime = 25 + (totalStreams * 3); // all local
+  const seqReduceTime = reducerCount * 95;
+  const seqTotalTime = 25 + (12 + mapperCount * 3) + seqMapTime + seqShuffleTime + seqReduceTime + (16 + reducerCount * 6);
 
-  const splits = Array.from(
-    { length: mapperCount },
-    () => []
-  );
+  const speedup = (seqTotalTime / totalTime).toFixed(2);
+  const savingsPct = Math.round(((seqTotalTime - totalTime) / seqTotalTime) * 100);
 
-  DATA.forEach((record, i) => {
-
-    splits[i % mapperCount].push(record);
-
-  });
-
-  return splits;
-
-}
-
-
-function mapData(splits) {
-
-  return splits.map(
-    split =>
-      split.map(
-        ([city, temp]) => ({
-          key: city,
-          value: temp
-        })
-      )
-  );
-
-}
-
-
-function shuffle(mapped) {
-
-  const groups = {};
-
-  mapped.flat().forEach(
-    ({ key, value }) => {
-
-      if (!groups[key]) {
-        groups[key] = [];
-      }
-
-      groups[key].push(value);
-
-    }
-  );
-
-  return groups;
-
-}
-
-
-function partitionGroups(groups) {
-
-  const partitions =
-    Array.from(
-      { length: reducerCount },
-      () => []
-    );
-
-  Object.entries(groups).forEach(
-    ([key, values]) => {
-
-      let hash = 0;
-
-      for (const c of key) {
-
-        hash =
-          (hash * 31 +
-            c.charCodeAt(0)) >>> 0;
-
-      }
-
-      partitions[
-        hash % reducerCount
-      ].push([key, values]);
-
-    }
-  );
-
-  return partitions;
-
-}
-
-
-function reducePartitions(partitions) {
-
-  return partitions.flatMap(
-    p =>
-      p.map(
-        ([key, values]) =>
-          [key, Math.max(...values)]
-      )
-  );
-
+  return {
+    inputTime,
+    splitTime,
+    mapTime,
+    mapWaves,
+    shuffleTime,
+    remoteTransfers,
+    localTransfers,
+    totalStreams,
+    reduceTime,
+    reduceWaves,
+    outputTime,
+    totalTime,
+    seqTotalTime,
+    speedup,
+    savingsPct,
+    // Percentages of total job
+    inputPct: ((inputTime / totalTime) * 100).toFixed(1),
+    splitPct: ((splitTime / totalTime) * 100).toFixed(1),
+    mapPct: ((mapTime / totalTime) * 100).toFixed(1),
+    shufflePct: ((shuffleTime / totalTime) * 100).toFixed(1),
+    reducePct: ((reduceTime / totalTime) * 100).toFixed(1),
+    outputPct: ((outputTime / totalTime) * 100).toFixed(1)
+  };
 }
 
 
 /* =========================================================
-   SEGURIDAD HTML
+   PIPELINE PHASES & TEXT GENERATION
+========================================================= */
+
+function getPhases() {
+  const opLabel = aggregationMode === "max" ? "Maximum" : (aggregationMode === "min" ? "Minimum" : "Average");
+  const opFunc = aggregationMode === "max" ? "max()" : (aggregationMode === "min" ? "min()" : "avg()");
+  const opMath = aggregationMode === "max" ? "max(values)" : (aggregationMode === "min" ? "min(values)" : "avg(values)");
+
+  return [
+    {
+      name: "Input",
+      title: "1. Input Phase — Full Raw Dataset",
+      text:
+        "The distributed job receives raw input records. Each entry contains a city name and a measured temperature. " +
+        "At this initial stage, neither Mappers nor Reducers have begun execution.",
+      idea:
+        "The input is the raw problem space. Our goal is to aggregate 12 distributed observations into a single " +
+        opLabel.toLowerCase() + " value per city.",
+      formula:
+        "<city, temperature>"
+    },
+
+    {
+      name: "Split",
+      title: "2. Input Split Phase — Chunking Dataset for Mappers",
+      text:
+        "The dataset is logically partitioned into Input Splits, each allocated to a dedicated Mapper task. " +
+        "Crucial principle: the number of physical nodes does NOT dictate how many Mapper tasks exist.",
+      idea:
+        "A 3-node cluster can run 4, 8, or more Mapper tasks. Machines execute tasks sequentially or in parallel depending on available cores.",
+      formula:
+        "Dataset → Input Split 1 | Split 2 | ... | Split M"
+    },
+
+    {
+      name: "Map",
+      title: "3. Map Phase — Emitting Intermediate Key-Value Pairs",
+      text:
+        "Each Mapper task executes the map() transformation on its assigned Input Split. " +
+        "In this example, it parses each record and emits the city as key and the temperature as value.",
+      idea:
+        "The Map phase transforms records into standard intermediate pairs. It does not compute cross-city aggregations yet.",
+      formula:
+        "map(city, temperature) → <city, temperature>"
+    },
+
+    {
+      name: "Shuffle",
+      title: "4. Shuffle & Sort Phase — Grouping by Key Across Network",
+      text:
+        "After Map completes, the framework redistributes pairs across the cluster network. " +
+        "All values belonging to the same city key are routed to the same designated Reducer task.",
+      idea:
+        "Shuffle is the network-intensive boundary between Map and Reduce: it routes records by hash(key) % reducers.",
+      formula:
+        "Toronto → [18, 22, 32] | Tokyo → [31, 38, 34] | ..."
+    },
+
+    {
+      name: "Reduce",
+      title: `5. Reduce Phase — Computing ${opLabel} per Key`,
+      text:
+        `Each Reducer task receives grouped key lists and applies ${opFunc} to aggregate the temperature readings into a single summary value.`,
+      idea:
+        `Reducer count is also decoupled from physical nodes. The reduce function folds a list of readings into one ${opLabel.toLowerCase()} value.`,
+      formula:
+        `reduce(city, values) → <city, ${opMath}>`
+    },
+
+    {
+      name: "Output",
+      title: `6. Output Phase — Final Distributed ${opLabel} Results`,
+      text:
+        "Each Reducer writes its consolidated output to persistent distributed storage (HDFS, Amazon S3, or Google Cloud Storage) as partitioned output files.",
+      idea:
+        `The final output provides a clean summary: exactly one ${opLabel.toLowerCase()} temperature per city across all observations.`,
+      formula:
+        aggregationMode === "max"
+          ? "Toronto → 32°C | London → 27°C | Tokyo → 38°C | New York → 33°C"
+          : (aggregationMode === "min"
+              ? "Toronto → 18°C | London → 21°C | Tokyo → 31°C | New York → 28°C"
+              : "Toronto → 24.0°C | London → 24.3°C | Tokyo → 34.3°C | New York → 30.0°C")
+    }
+  ];
+}
+
+
+/* =========================================================
+   MAPREDUCE CORE LOGIC
+========================================================= */
+
+function distributeTasks(count) {
+  return Array.from({ length: nodeCount }, () => []);
+}
+
+function assignTasks(count, prefix) {
+  const nodes = distributeTasks(count);
+  for (let i = 0; i < count; i++) {
+    nodes[i % nodeCount].push(`${prefix}${i + 1}`);
+  }
+  return nodes;
+}
+
+function splitData() {
+  const splits = Array.from({ length: mapperCount }, () => []);
+  DATA.forEach((record, i) => {
+    splits[i % mapperCount].push(record);
+  });
+  return splits;
+}
+
+function mapData(splits) {
+  return splits.map(split =>
+    split.map(([city, temp]) => ({
+      key: city,
+      value: temp
+    }))
+  );
+}
+
+function shuffle(mapped) {
+  const groups = {};
+  mapped.flat().forEach(({ key, value }) => {
+    if (!groups[key]) {
+      groups[key] = [];
+    }
+    groups[key].push(value);
+  });
+  return groups;
+}
+
+function partitionGroups(groups) {
+  const partitions = Array.from({ length: reducerCount }, () => []);
+  Object.entries(groups).forEach(([key, values]) => {
+    let hash = 0;
+    for (const c of key) {
+      hash = (hash * 31 + c.charCodeAt(0)) >>> 0;
+    }
+    partitions[hash % reducerCount].push([key, values]);
+  });
+  return partitions;
+}
+
+function calculateAggregation(values, mode = aggregationMode) {
+  if (mode === "min") {
+    return Math.min(...values);
+  } else if (mode === "avg") {
+    const sum = values.reduce((acc, v) => acc + v, 0);
+    return Number((sum / values.length).toFixed(1));
+  } else {
+    // max
+    return Math.max(...values);
+  }
+}
+
+function reducePartitions(partitions) {
+  return partitions.flatMap(p =>
+    p.map(([key, values]) => [
+      key,
+      calculateAggregation(values, aggregationMode),
+      {
+        max: Math.max(...values),
+        min: Math.min(...values),
+        avg: Number((values.reduce((a, b) => a + b, 0) / values.length).toFixed(1))
+      }
+    ])
+  );
+}
+
+
+/* =========================================================
+   HTML UTILITIES & ESCAPING
 ========================================================= */
 
 function esc(s) {
-
   return String(s).replace(
     /[&<>"']/g,
     c => ({
@@ -1524,887 +2138,872 @@ function esc(s) {
       "'": '&#039;'
     }[c])
   );
-
 }
-
-
-/* =========================================================
-   HTML AUXILIAR
-========================================================= */
 
 function recordHTML(city, temp) {
-
   return `
     <div class="record">
-      <span class="city">
-        ${esc(city)}
-      </span>
-
-      <span style="color:#777">
-        &lt;
-      </span>
-
-      <span style="color:var(--yellow)">
-        ${temp}°C
-      </span>
-
-      <span style="color:#777">
-        &gt;
-      </span>
+      <span class="city">${esc(city)}</span>
+      <span style="color:#777">&lt;</span>
+      <span style="color:var(--yellow); font-weight:800">${temp}°C</span>
+      <span style="color:#777">&gt;</span>
     </div>
   `;
-
 }
 
-
 function kvHTML(key, value) {
-
   return `
     <div class="kv">
-
-      <span class="key">
-        ${esc(key)}
-      </span>
-
-      <span style="color:#777">
-        →
-      </span>
-
-      <span class="value">
-        ${value}
-      </span>
-
+      <span class="key">${esc(key)}</span>
+      <span style="color:#777">→</span>
+      <span class="value">${value}°C</span>
     </div>
   `;
-
 }
 
 
 /* =========================================================
-   DATASET
+   CONNECTOR DATA PACKET GENERATORS
+========================================================= */
+
+function getPacketsHTML(list) {
+  // Duplicate list to allow seamless loop
+  const doubled = [...list, ...list];
+  return doubled.map(item => `
+    <span class="packet-pill">
+      <span class="packet-dot"></span>
+      ${esc(item)}
+    </span>
+  `).join("");
+}
+
+function renderConnector(id, packets, statusText) {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  el.innerHTML = `
+    <div class="connector-pipe">
+      <div class="pipe-surge-beam"></div>
+      <div class="pipe-packets-track">
+        ${getPacketsHTML(packets)}
+      </div>
+    </div>
+    <div class="connector-status">
+      <span class="status-pulse-dot"></span>
+      <span>${statusText}</span>
+      <span class="connector-arrow-down">▼</span>
+    </div>
+  `;
+}
+
+
+/* =========================================================
+   DATASET RENDER
 ========================================================= */
 
 function renderDataset() {
-
   let html = `
     <table>
-
       <thead>
-
         <tr>
           <th>#</th>
-          <th>Ciudad (clave)</th>
-          <th>Temperatura (valor)</th>
+          <th>City (Key)</th>
+          <th>Temperature (Value)</th>
         </tr>
-
       </thead>
-
       <tbody>
   `;
 
-  DATA.forEach(
-    ([city, temp], i) => {
-
-      html += `
-        <tr>
-
-          <td>
-            ${i + 1}
-          </td>
-
-          <td style="color:var(--accent2)">
-            ${esc(city)}
-          </td>
-
-          <td style="color:var(--yellow)">
-            ${temp}°C
-          </td>
-
-        </tr>
-      `;
-
-    }
-  );
+  DATA.forEach(([city, temp], i) => {
+    html += `
+      <tr>
+        <td>${i + 1}</td>
+        <td style="color:var(--accent2); font-weight:700;">${esc(city)}</td>
+        <td style="color:var(--yellow); font-weight:700;">${temp}°C</td>
+      </tr>
+    `;
+  });
 
   html += `
       </tbody>
     </table>
   `;
 
-  document.getElementById(
-    "datasetTable"
-  ).innerHTML = html;
-
+  document.getElementById("datasetTable").innerHTML = html;
 }
 
 
 /* =========================================================
-   CLUSTER
+   CLUSTER VIEW RENDER
 ========================================================= */
 
 function renderCluster() {
+  const mapperNodes = assignTasks(mapperCount, "M");
+  const reducerNodes = assignTasks(reducerCount, "R");
 
-  const mapperNodes =
-    assignTasks(
-      mapperCount,
-      "M"
-    );
+  let html = `<div class="cluster">`;
 
-  const reducerNodes =
-    assignTasks(
-      reducerCount,
-      "R"
-    );
-
-  let html = `
-    <div class="cluster">
-  `;
-
-
-  for (
-    let n = 0;
-    n < nodeCount;
-    n++
-  ) {
+  for (let n = 0; n < nodeCount; n++) {
+    const assignedMappers = mapperNodes[n];
+    const assignedReducers = reducerNodes[n];
+    const totalNodeTasks = assignedMappers.length + assignedReducers.length;
+    
+    // Nominal worker slot capacity = 3 tasks
+    const slotCapacity = 3;
+    const loadPercent = Math.min(100, Math.round((totalNodeTasks / slotCapacity) * 100));
 
     html += `
-
-      <div class="cluster-node">
-
-        <h3>
-          Nodo ${n + 1}
-        </h3>
-
-        <div class="small">
-          Máquina física / worker
+      <div class="cluster-node active-worker">
+        <div class="node-header">
+          <h3>
+            <span>🖥️</span> Node ${n + 1}
+          </h3>
+          <span class="node-status-badge">
+            <span class="status-led"></span>
+            ONLINE
+          </span>
         </div>
 
+        <div class="node-load-wrap">
+          <div class="node-load-info">
+            <span>Workload: ${totalNodeTasks} task${totalNodeTasks !== 1 ? 's' : ''}</span>
+            <span>${loadPercent}% load</span>
+          </div>
+          <div class="node-load-bar">
+            <div class="node-load-fill" style="width: ${loadPercent}%;"></div>
+          </div>
+        </div>
 
         <div style="margin-top:10px">
-          <b style="color:var(--blue)">
-            Mappers
-          </b>
-        </div>
-
-
-        <div class="task-list">
-
-          ${
-            mapperNodes[n].length
-
-            ? mapperNodes[n]
-                .map(
-                  t => `
-
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <b style="color:var(--blue); font-size:.8rem;">Mappers (${assignedMappers.length})</b>
+          </div>
+          <div class="task-list">
+            ${
+              assignedMappers.length
+                ? assignedMappers.map(t => `
                     <div class="task mapper">
-
                       <div class="task-label">
-                        ${t}
+                        <span>${t}</span>
+                        <span style="color:var(--blue); font-size:.7rem;">ACTIVE</span>
                       </div>
-
-                      <div class="task-detail">
-                        Tarea Mapper
-                      </div>
-
+                      <div class="task-detail">Mapper Worker Task</div>
                     </div>
-
-                  `
-                )
-                .join("")
-
-            : `
-              <div class="small">
-                Ninguno
-              </div>
-            `
-          }
-
+                  `).join("")
+                : `<div class="small" style="padding:4px 0;">No mappers assigned</div>`
+            }
+          </div>
         </div>
 
-
-        <div style="margin-top:10px">
-
-          <b style="color:var(--green)">
-            Reducers
-          </b>
-
-        </div>
-
-
-        <div class="task-list">
-
-          ${
-            reducerNodes[n].length
-
-            ? reducerNodes[n]
-                .map(
-                  t => `
-
+        <div style="margin-top:12px">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <b style="color:var(--green); font-size:.8rem;">Reducers (${assignedReducers.length})</b>
+          </div>
+          <div class="task-list">
+            ${
+              assignedReducers.length
+                ? assignedReducers.map(t => `
                     <div class="task reducer">
-
                       <div class="task-label">
-                        ${t}
+                        <span>${t}</span>
+                        <span style="color:var(--green); font-size:.7rem;">ACTIVE</span>
                       </div>
-
-                      <div class="task-detail">
-                        Tarea Reducer
-                      </div>
-
+                      <div class="task-detail">Reducer Worker Task</div>
                     </div>
-
-                  `
-                )
-                .join("")
-
-            : `
-              <div class="small">
-                Ninguno
-              </div>
-            `
-          }
-
+                  `).join("")
+                : `<div class="small" style="padding:4px 0;">No reducers assigned</div>`
+            }
+          </div>
         </div>
-
       </div>
     `;
-
   }
 
-
   html += `
-
     </div>
-
     <div class="mapping-explanation">
-
-      <b>Observa:</b>
-
-      tienes ${nodeCount} nodos,
-      ${mapperCount} Mappers y
-      ${reducerCount} Reducers.
-
-      Las tareas se distribuyen entre los nodos disponibles.
-
-      Si aumentas los nodos, no estás diciendo automáticamente
-      "ahora tengo ese número de Mappers y Reducers";
-      estás agregando máquinas capaces de ejecutar esas tareas.
-
+      <b>Cluster Scheduling Insight:</b>
+      You currently have <b>${nodeCount} physical node${nodeCount > 1 ? 's' : ''}</b> hosting
+      <b>${mapperCount} Mapper${mapperCount > 1 ? 's' : ''}</b> and
+      <b>${reducerCount} Reducer${reducerCount > 1 ? 's' : ''}</b>.
+      Tasks are scheduled round-robin onto the active nodes.
+      Increasing nodes adds parallel processing capacity to the cluster, but the number of logical tasks is defined by data partitioning rules.
     </div>
   `;
 
-
-  document.getElementById(
-    "clusterView"
-  ).innerHTML = html;
-
+  document.getElementById("clusterView").innerHTML = html;
 }
 
 
 /* =========================================================
-   VISIBILIDAD DE ETAPAS
+   STATISTICS DASHBOARD RENDER
 ========================================================= */
 
-function reveal(
-  id,
-  visible,
-  current = false
-) {
+function renderStats(timings) {
+  const { totalTime, seqTotalTime, speedup, savingsPct, remoteTransfers, localTransfers, totalStreams, mapWaves, reduceWaves } = timings;
 
-  const el =
-    document.getElementById(id);
+  // 4. Cluster Utilization %
+  const totalSlots = nodeCount * 2; // 2 concurrent execution slots per node
+  const activeTasks = Math.max(mapperCount, reducerCount);
+  const clusterUtilization = Math.min(100, Math.round((activeTasks / totalSlots) * 100));
 
-  if (!el) return;
+  // 5. Load Skew Score
+  const nodeLoadCounts = Array.from({ length: nodeCount }, () => 0);
+  for (let m = 0; m < mapperCount; m++) nodeLoadCounts[m % nodeCount]++;
+  for (let r = 0; r < reducerCount; r++) nodeLoadCounts[r % nodeCount]++;
+  
+  const minLoad = Math.min(...nodeLoadCounts);
+  const maxLoad = Math.max(...nodeLoadCounts);
+  const balanceScore = maxLoad === 0 ? 100 : Math.round((minLoad / maxLoad) * 100);
 
-  el.classList.toggle(
-    "stage-hidden",
-    !visible
-  );
+  const statsHTML = `
+    <!-- Card 1: Simulated Latency -->
+    <div class="stat-card">
+      <div class="stat-title">
+        <span>⏱️ Estimated Latency</span>
+      </div>
+      <div class="stat-value" style="color: var(--accent2);">${totalTime} ms</div>
+      <div class="stat-detail">
+        Single-node baseline: ${seqTotalTime} ms
+      </div>
+      <div>
+        <span class="stat-badge ${savingsPct >= 0 ? 'good' : 'warn'}">
+          ${savingsPct >= 0 ? `-${savingsPct}% faster` : `+${Math.abs(savingsPct)}% slower`}
+        </span>
+      </div>
+      <div class="stat-bar">
+        <div class="stat-bar-fill" style="width: ${Math.min(100, (totalTime / seqTotalTime) * 100)}%; background: var(--accent2);"></div>
+      </div>
+    </div>
 
-  el.classList.toggle(
-    "stage-visible",
-    visible
-  );
+    <!-- Card 2: Cluster Speedup -->
+    <div class="stat-card">
+      <div class="stat-title">
+        <span>⚡ Parallel Speedup</span>
+      </div>
+      <div class="stat-value" style="color: var(--accent);">${speedup}x</div>
+      <div class="stat-detail">
+        Scalability vs single machine
+      </div>
+      <div>
+        <span class="stat-badge ${speedup >= 2.0 ? 'good' : (speedup >= 1.2 ? 'accent' : 'warn')}">
+          ${speedup >= 2.0 ? 'High Scalability' : (speedup >= 1.2 ? 'Moderate Scalability' : 'Low Scalability')}
+        </span>
+      </div>
+      <div class="stat-bar">
+        <div class="stat-bar-fill" style="width: ${Math.min(100, (parseFloat(speedup) / 4) * 100)}%; background: var(--accent);"></div>
+      </div>
+    </div>
 
-  el.classList.toggle(
-    "current-stage",
-    current
-  );
+    <!-- Card 3: Cluster Utilization -->
+    <div class="stat-card">
+      <div class="stat-title">
+        <span>📈 Worker Utilization</span>
+      </div>
+      <div class="stat-value" style="color: var(--yellow);">${clusterUtilization}%</div>
+      <div class="stat-detail">
+        ${activeTasks} peak tasks across ${nodeCount} nodes
+      </div>
+      <div>
+        <span class="stat-badge ${clusterUtilization >= 75 ? 'good' : (clusterUtilization >= 40 ? 'accent' : 'warn')}">
+          ${clusterUtilization >= 90 ? 'Full Saturation' : (clusterUtilization >= 50 ? 'Optimal Load' : 'Underutilized')}
+        </span>
+      </div>
+      <div class="stat-bar">
+        <div class="stat-bar-fill" style="width: ${clusterUtilization}%; background: var(--yellow);"></div>
+      </div>
+    </div>
 
+    <!-- Card 4: Shuffle Network Streams -->
+    <div class="stat-card">
+      <div class="stat-title">
+        <span>🌐 Shuffle I/O Streams</span>
+      </div>
+      <div class="stat-value" style="color: var(--cyan);">${totalStreams}</div>
+      <div class="stat-detail">
+        ${remoteTransfers} remote network I/O · ${localTransfers} local rack
+      </div>
+      <div>
+        <span class="stat-badge accent">
+          ${remoteTransfers > 0 ? `${Math.round((remoteTransfers/totalStreams)*100)}% Cross-Node` : '100% Local'}
+        </span>
+      </div>
+      <div class="stat-bar">
+        <div class="stat-bar-fill" style="width: ${Math.min(100, (remoteTransfers / totalStreams) * 100)}%; background: var(--cyan);"></div>
+      </div>
+    </div>
+
+    <!-- Card 5: Execution Waves -->
+    <div class="stat-card">
+      <div class="stat-title">
+        <span>🌊 Task Waves</span>
+      </div>
+      <div class="stat-value" style="color: var(--blue);">M:${mapWaves} | R:${reduceWaves}</div>
+      <div class="stat-detail">
+        Map: ${mapWaves} wave${mapWaves > 1 ? 's' : ''} · Reduce: ${reduceWaves} wave${reduceWaves > 1 ? 's' : ''}
+      </div>
+      <div>
+        <span class="stat-badge ${mapWaves === 1 && reduceWaves === 1 ? 'good' : 'accent'}">
+          ${mapWaves === 1 && reduceWaves === 1 ? 'Single-Wave Execution' : 'Multi-Wave Queueing'}
+        </span>
+      </div>
+      <div class="stat-bar">
+        <div class="stat-bar-fill" style="width: ${Math.min(100, (mapWaves / 4) * 100)}%; background: var(--blue);"></div>
+      </div>
+    </div>
+
+    <!-- Card 6: Workload Balance -->
+    <div class="stat-card">
+      <div class="stat-title">
+        <span>⚖️ Cluster Load Balance</span>
+      </div>
+      <div class="stat-value" style="color: var(--green);">${balanceScore}%</div>
+      <div class="stat-detail">
+        Min tasks/node: ${minLoad} · Max: ${maxLoad}
+      </div>
+      <div>
+        <span class="stat-badge ${balanceScore >= 80 ? 'good' : (balanceScore >= 50 ? 'accent' : 'warn')}">
+          ${balanceScore >= 80 ? 'Balanced Cluster' : 'Mild Task Skew'}
+        </span>
+      </div>
+      <div class="stat-bar">
+        <div class="stat-bar-fill" style="width: ${balanceScore}%; background: var(--green);"></div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("statsView").innerHTML = statsHTML;
 }
 
 
 /* =========================================================
-   RENDER PRINCIPAL
+   TIMING BREAKDOWN & WATERFALL TIMELINE RENDER
+========================================================= */
+
+function renderTimingBreakdown(t) {
+  const el = document.getElementById("timingStage");
+  if (!el) return;
+
+  const html = `
+    <div class="stage-title-row">
+      <div>
+        <div class="stage-title" style="color: var(--accent2); display: flex; align-items: center; gap: 8px;">
+          <span>🏁</span> Total Job Execution Time & Stage Latency Breakdown
+        </div>
+        <div class="stage-sub" style="margin-bottom: 0;">
+          Simulated cluster latency model recomputed dynamically with ${nodeCount} nodes, ${mapperCount} mappers, and ${reducerCount} reducers.
+        </div>
+      </div>
+      <span class="tag stage-time-tag">
+        Total: ${t.totalTime} ms
+      </span>
+    </div>
+
+    <!-- Hero Banner with Total and Speedup -->
+    <div class="timing-hero-banner">
+      <div class="timing-hero-left">
+        <h3>Total Cluster Execution Latency</h3>
+        <div class="timing-total-val">${t.totalTime} ms</div>
+        <div style="font-size: .8rem; color: var(--muted); margin-top: 4px;">
+          Single-machine sequential reference: <b>${t.seqTotalTime} ms</b>
+        </div>
+      </div>
+
+      <div class="timing-hero-right">
+        <div class="timing-summary-badge speedup">
+          <span>⚡</span>
+          <span>${t.speedup}x Parallel Speedup</span>
+        </div>
+        <div class="timing-summary-badge savings">
+          <span>📉</span>
+          <span>${t.savingsPct}% Execution Time Saved</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Proportional Waterfall / Gantt Timeline -->
+    <div class="waterfall-wrap">
+      <div class="waterfall-label-row">
+        <span>Timeline Phase Allocation (% of Total Job) · Click any segment to jump to stage</span>
+        <span>Sum = 100% (${t.totalTime} ms)</span>
+      </div>
+
+      <div class="waterfall-bar">
+        <div class="waterfall-segment seg-input" style="width: ${t.inputPct}%;" title="Input Phase: ${t.inputTime} ms (${t.inputPct}%)" onclick="setPhase(0)">
+          <span>Input (${t.inputPct}%)</span>
+        </div>
+        <div class="waterfall-segment seg-split" style="width: ${t.splitPct}%;" title="Split Phase: ${t.splitTime} ms (${t.splitPct}%)" onclick="setPhase(1)">
+          <span>Split (${t.splitPct}%)</span>
+        </div>
+        <div class="waterfall-segment seg-map" style="width: ${t.mapPct}%;" title="Map Phase: ${t.mapTime} ms (${t.mapPct}%)" onclick="setPhase(2)">
+          <span>Map: ${t.mapTime}ms (${t.mapPct}%)</span>
+        </div>
+        <div class="waterfall-segment seg-shuffle" style="width: ${t.shufflePct}%;" title="Shuffle Phase: ${t.shuffleTime} ms (${t.shufflePct}%)" onclick="setPhase(3)">
+          <span>Shuffle: ${t.shuffleTime}ms (${t.shufflePct}%)</span>
+        </div>
+        <div class="waterfall-segment seg-reduce" style="width: ${t.reducePct}%;" title="Reduce Phase: ${t.reduceTime} ms (${t.reducePct}%)" onclick="setPhase(4)">
+          <span>Reduce: ${t.reduceTime}ms (${t.reducePct}%)</span>
+        </div>
+        <div class="waterfall-segment seg-output" style="width: ${t.outputPct}%;" title="Output Phase: ${t.outputTime} ms (${t.outputPct}%)" onclick="setPhase(5)">
+          <span>Output (${t.outputPct}%)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stage-by-Stage Latency Cards -->
+    <div class="stage-timing-grid">
+      <!-- Stage 1 -->
+      <div class="stage-timing-card">
+        <div class="stage-timing-header">
+          <span class="stage-timing-name"><span>📥</span> 1. Input</span>
+          <span class="stage-timing-pct">${t.inputPct}%</span>
+        </div>
+        <div class="stage-timing-ms">${t.inputTime} ms</div>
+        <div class="stage-timing-desc">
+          Baseline storage read I/O for 12 raw city observations.
+        </div>
+        <div class="stage-timing-minibar">
+          <div class="stage-timing-fill" style="width: ${t.inputPct}%; background: #64748b;"></div>
+        </div>
+      </div>
+
+      <!-- Stage 2 -->
+      <div class="stage-timing-card">
+        <div class="stage-timing-header">
+          <span class="stage-timing-name"><span>✂️</span> 2. Split</span>
+          <span class="stage-timing-pct">${t.splitPct}%</span>
+        </div>
+        <div class="stage-timing-ms">${t.splitTime} ms</div>
+        <div class="stage-timing-desc">
+          Logically partitioned dataset into <b>${mapperCount} splits</b> (12ms base + 3ms/split).
+        </div>
+        <div class="stage-timing-minibar">
+          <div class="stage-timing-fill" style="width: ${t.splitPct}%; background: #38bdf8;"></div>
+        </div>
+      </div>
+
+      <!-- Stage 3 -->
+      <div class="stage-timing-card">
+        <div class="stage-timing-header">
+          <span class="stage-timing-name"><span>🗺️</span> 3. Map Phase</span>
+          <span class="stage-timing-pct">${t.mapPct}%</span>
+        </div>
+        <div class="stage-timing-ms" style="color: var(--blue);">${t.mapTime} ms</div>
+        <div class="stage-timing-desc">
+          <b>${t.mapWaves} wave(s)</b> across ${nodeCount} node(s) (${mapperCount} mappers @ 120ms/task).
+        </div>
+        <div class="stage-timing-minibar">
+          <div class="stage-timing-fill" style="width: ${t.mapPct}%; background: var(--blue);"></div>
+        </div>
+      </div>
+
+      <!-- Stage 4 -->
+      <div class="stage-timing-card">
+        <div class="stage-timing-header">
+          <span class="stage-timing-name"><span>🔀</span> 4. Shuffle & Sort</span>
+          <span class="stage-timing-pct">${t.shufflePct}%</span>
+        </div>
+        <div class="stage-timing-ms" style="color: var(--orange);">${t.shuffleTime} ms</div>
+        <div class="stage-timing-desc">
+          <b>${t.remoteTransfers} remote I/O</b> (15ms ea) + <b>${t.localTransfers} local</b> (3ms ea) + barrier sync (25ms).
+        </div>
+        <div class="stage-timing-minibar">
+          <div class="stage-timing-fill" style="width: ${t.shufflePct}%; background: var(--orange);"></div>
+        </div>
+      </div>
+
+      <!-- Stage 5 -->
+      <div class="stage-timing-card">
+        <div class="stage-timing-header">
+          <span class="stage-timing-name"><span>⚙️</span> 5. Reduce Phase</span>
+          <span class="stage-timing-pct">${t.reducePct}%</span>
+        </div>
+        <div class="stage-timing-ms" style="color: var(--green);">${t.reduceTime} ms</div>
+        <div class="stage-timing-desc">
+          <b>${t.reduceWaves} wave(s)</b> across ${nodeCount} node(s) (${reducerCount} reducers @ 95ms/task).
+        </div>
+        <div class="stage-timing-minibar">
+          <div class="stage-timing-fill" style="width: ${t.reducePct}%; background: var(--green);"></div>
+        </div>
+      </div>
+
+      <!-- Stage 6 -->
+      <div class="stage-timing-card">
+        <div class="stage-timing-header">
+          <span class="stage-timing-name"><span>💾</span> 6. Output Write</span>
+          <span class="stage-timing-pct">${t.outputPct}%</span>
+        </div>
+        <div class="stage-timing-ms">${t.outputTime} ms</div>
+        <div class="stage-timing-desc">
+          Flushed and committed <b>${reducerCount} partition files</b> to distributed storage.
+        </div>
+        <div class="stage-timing-minibar">
+          <div class="stage-timing-fill" style="width: ${t.outputPct}%; background: var(--accent);"></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  el.innerHTML = html;
+}
+
+
+/* =========================================================
+   STAGE VISIBILITY
+========================================================= */
+
+function reveal(id, visible, current = false) {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  el.classList.toggle("stage-hidden", !visible);
+  el.classList.toggle("stage-visible", visible);
+  el.classList.toggle("current-stage", current);
+}
+
+
+/* =========================================================
+   MAIN RENDER PIPELINE
 ========================================================= */
 
 function render() {
-
+  const timings = getStageTimings();
+  const phases = getPhases();
   const splits = splitData();
+  const mapped = mapData(splits);
+  const groups = shuffle(mapped);
+  const partitions = partitionGroups(groups);
+  const reduced = reducePartitions(partitions);
 
-  const mapped =
-    mapData(splits);
+  /* UPDATE NUMERIC LABELS */
+  document.getElementById("nodesValue").textContent = nodeCount;
+  document.getElementById("mappersValue").textContent = mapperCount;
+  document.getElementById("reducersValue").textContent = reducerCount;
+  document.getElementById("fnValueLabel").textContent = aggregationMode.toUpperCase();
 
-  const groups =
-    shuffle(mapped);
+  /* AGGREGATION BUTTON STYLES */
+  document.querySelectorAll(".fn-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.fn === aggregationMode);
+  });
 
-  const partitions =
-    partitionGroups(groups);
-
-  const reduced =
-    reducePartitions(partitions);
-
-
-  /* CONTADORES */
-
-  document.getElementById(
-    "nodesValue"
-  ).textContent = nodeCount;
-
-  document.getElementById(
-    "mappersValue"
-  ).textContent = mapperCount;
-
-  document.getElementById(
-    "reducersValue"
-  ).textContent = reducerCount;
-
-
-  /* EXPLICACIÓN */
-
-  document.getElementById(
-    "explanation"
-  ).innerHTML = `
-
+  /* EXPLANATION CARDS */
+  document.getElementById("explanation").innerHTML = `
     <h2>
-
-      <span class="step-number">
-        ${phase + 1}
-      </span>
-
+      <span class="step-number">${phase + 1}</span>
       ${phases[phase].title}
-
     </h2>
-
-    <p>
+    <p class="hint" style="font-size:1rem; color:var(--text);">
       ${phases[phase].text}
     </p>
-
   `;
 
+  document.getElementById("keyIdea").textContent = phases[phase].idea;
+  document.getElementById("formula").textContent = phases[phase].formula;
 
-  document.getElementById(
-    "keyIdea"
-  ).textContent =
-    phases[phase].idea;
+  /* SIDEBAR PHASES WITH TIMINGS */
+  const phaseTimingsList = [
+    timings.inputTime,
+    timings.splitTime,
+    timings.mapTime,
+    timings.shuffleTime,
+    timings.reduceTime,
+    timings.outputTime
+  ];
 
+  document.getElementById("phasebar").innerHTML = phases.map((p, i) => `
+    <div
+      class="phase ${i === phase ? "active" : ""} ${i < phase ? "done" : ""}"
+      onclick="setPhase(${i})"
+    >
+      ${i < phase ? "✓ " : ""}${i + 1}. ${p.name}
+      <span class="phase-timing-sub">⏱️ ${phaseTimingsList[i]} ms</span>
+    </div>
+  `).join("");
 
-  document.getElementById(
-    "formula"
-  ).textContent =
-    phases[phase].formula;
+  /* STAGE MARKER */
+  document.getElementById("currentStageMarker").textContent =
+    `Stage ${phase + 1} of 6 · ${phases[phase].name} (${phaseTimingsList[phase]} ms)`;
 
-
-  /* SIDEBAR */
-
-  document.getElementById(
-    "phasebar"
-  ).innerHTML =
-
-    phases.map(
-      (p, i) => `
-
-        <div
-          class="phase
-          ${i === phase ? "active" : ""}
-          ${i < phase ? "done" : ""}"
-        >
-
-          ${
-            i < phase
-              ? "✓ "
-              : ""
-          }
-
-          ${i + 1}.
-          ${p.name}
-
-        </div>
-
-      `
-    ).join("");
-
-
-  /* MARCADOR */
-
-  document.getElementById(
-    "currentStageMarker"
-  ).textContent =
-    `Etapa ${phase + 1} de 6 · ${phases[phase].name}`;
-
-
-  /* CLUSTER */
-
+  /* CLUSTER ARCHITECTURE VIEW */
   renderCluster();
 
+  /* STATISTICS DASHBOARD */
+  renderStats(timings);
 
   /* =====================================================
-     ETAPA 1 — ENTRADA
+     STAGE 1 — INPUT
   ===================================================== */
-
-  document.getElementById(
-    "inputStage"
-  ).innerHTML = `
-
+  document.getElementById("inputStage").innerHTML = `
     <div class="stage-wide">
-
       <div class="stage-title-row">
-
-        <div class="stage-title">
-          1. Entrada
+        <div class="stage-title">1. Input Phase</div>
+        <div class="stage-tags-group">
+          <span class="tag">12 Raw Records</span>
+          <span class="tag stage-time-tag">⏱️ ${timings.inputTime} ms (${timings.inputPct}%)</span>
         </div>
-
-        <span class="tag">
-          12 registros
-        </span>
-
       </div>
-
-
       <div class="stage-sub">
-
-        El conjunto completo antes de comenzar
-        el procesamiento.
-
+        The complete unpartitioned dataset prior to distributed scheduling.
       </div>
-
-
       <div class="results">
-
-        ${DATA
-          .map(
-            ([c, t]) =>
-              recordHTML(c, t)
-          )
-          .join("")
-        }
-
+        ${DATA.map(([c, t], idx) => `
+          <div class="cascade-item" style="animation-delay: ${idx * 40}ms;">
+            ${recordHTML(c, t)}
+          </div>
+        `).join("")}
       </div>
-
     </div>
-
   `;
 
+  /* CONNECTOR 1 */
+  const rawPackets = DATA.map(([c, t]) => `⟨${c}, ${t}°C⟩`);
+  renderConnector(
+    "connector1",
+    rawPackets,
+    `Streaming 12 raw records into ${mapperCount} Input Splits...`
+  );
 
   /* =====================================================
-     ETAPA 2 — SPLIT
+     STAGE 2 — SPLIT
   ===================================================== */
-
-  document.getElementById(
-    "splitStage"
-  ).innerHTML = `
-
+  document.getElementById("splitStage").innerHTML = `
     <div class="stage-wide">
-
       <div class="stage-title-row">
-
-        <div class="stage-title">
-          2. División
+        <div class="stage-title">2. Input Split Phase</div>
+        <div class="stage-tags-group">
+          <span class="tag">${mapperCount} Input Splits</span>
+          <span class="tag stage-time-tag">⏱️ ${timings.splitTime} ms (${timings.splitPct}%)</span>
         </div>
-
-        <span class="tag">
-          ${mapperCount} Input Splits
-        </span>
-
       </div>
-
-
       <div class="stage-sub">
-
-        La entrada se divide en fragmentos
-        que serán procesados por las tareas Mapper.
-
+        The dataset is split into logical fragments destined for Mapper tasks.
       </div>
-
-
       <div class="split-grid">
-
-        ${splits
-          .map(
-            (s, i) => `
-
-              <div class="split-card">
-
-                <h4>
-                  Input Split ${i + 1}
-                  → M${i + 1}
-                </h4>
-
-                ${s
-                  .map(
-                    ([c, t]) => `
-
-                      <div class="split-record">
-
-                        &lt;
-                        ${esc(c)},
-                        ${t}°C
-                        &gt;
-
-                      </div>
-
-                    `
-                  )
-                  .join("")
-                }
-
+        ${splits.map((s, i) => `
+          <div class="split-card cascade-item" style="animation-delay: ${i * 60}ms;">
+            <h4>Input Split ${i + 1} → M${i + 1}</h4>
+            ${s.map(([c, t]) => `
+              <div class="split-record">
+                &lt;${esc(c)}, ${t}°C&gt;
               </div>
-
-            `
-          )
-          .join("")
-        }
-
+            `).join("")}
+          </div>
+        `).join("")}
       </div>
-
     </div>
-
   `;
 
+  /* CONNECTOR 2 */
+  const splitPackets = splits.map((s, i) => `Split ${i + 1} (${s.length} records) → M${i + 1}`);
+  renderConnector(
+    "connector2",
+    splitPackets,
+    `Dispatching ${mapperCount} Input Splits to Mapper tasks across ${nodeCount} worker node(s)...`
+  );
 
   /* =====================================================
-     ETAPA 3 — MAP
+     STAGE 3 — MAP
   ===================================================== */
-
-  document.getElementById(
-    "mapStage"
-  ).innerHTML = `
-
+  document.getElementById("mapStage").innerHTML = `
     <div class="stage-wide">
-
       <div class="stage-title-row">
-
-        <div class="stage-title">
-          3. Map
+        <div class="stage-title">3. Map Phase</div>
+        <div class="stage-tags-group">
+          <span class="tag">${mapperCount} Mapper Tasks</span>
+          <span class="tag stage-time-tag">⏱️ ${timings.mapTime} ms (${timings.mapPct}%)</span>
         </div>
-
-        <span class="tag">
-          ${mapperCount} tareas Mapper
-        </span>
-
       </div>
-
-
       <div class="stage-sub">
-
-        Cada tarea procesa su Input Split
-        y produce pares clave/valor.
-
+        Each Mapper task processes its Input Split and emits key-value pairs.
       </div>
-
-
       <div class="mapper-grid">
-
-        ${mapped
-          .map(
-            (m, i) => `
-
-              <div class="mini-task mapper">
-
-                <h4>
-                  M${i + 1}
-                  —
-                  Nodo ${(i % nodeCount) + 1}
-                </h4>
-
-                ${m
-                  .map(
-                    ({ key, value }) =>
-                      kvHTML(
-                        key,
-                        value
-                      )
-                  )
-                  .join("")
-                }
-
-              </div>
-
-            `
-          )
-          .join("")
-        }
-
+        ${mapped.map((m, i) => `
+          <div class="mini-task mapper cascade-item" style="animation-delay: ${i * 60}ms;">
+            <h4>
+              <span>M${i + 1}</span>
+              <span style="color:var(--muted); font-size:.74rem;">Node ${(i % nodeCount) + 1}</span>
+            </h4>
+            ${m.map(({ key, value }) => kvHTML(key, value)).join("")}
+          </div>
+        `).join("")}
       </div>
-
     </div>
-
   `;
 
+  /* CONNECTOR 3 */
+  const kvPackets = mapped.flat().map(({ key, value }) => `Emit: ⟨${key}, ${value}⟩`);
+  renderConnector(
+    "connector3",
+    kvPackets,
+    `Streaming intermediate key-value pairs over cluster network (${timings.remoteTransfers} remote, ${timings.localTransfers} local)...`
+  );
 
   /* =====================================================
-     ETAPA 4 — SHUFFLE
+     STAGE 4 — SHUFFLE
   ===================================================== */
-
-  document.getElementById(
-    "shuffleStage"
-  ).innerHTML = `
-
+  document.getElementById("shuffleStage").innerHTML = `
     <div class="stage-wide">
-
       <div class="stage-title-row">
-
-        <div class="stage-title">
-          4. Shuffle
+        <div class="stage-title">4. Shuffle & Sort Phase</div>
+        <div class="stage-tags-group">
+          <span class="tag">${reducerCount} Reducer Partition${reducerCount > 1 ? 's' : ''}</span>
+          <span class="tag stage-time-tag">⏱️ ${timings.shuffleTime} ms (${timings.shufflePct}%)</span>
         </div>
-
-        <span class="tag">
-          ${reducerCount} particiones
-        </span>
-
       </div>
-
-
       <div class="stage-sub">
-
-        Los pares con la misma clave se agrupan
-        y se envían al mismo Reducer.
-
+        Intermediate pairs are partitioned by key hash and transferred over the network to their assigned Reducer.
       </div>
-
-
       <div class="shuffle-grid">
-
-        ${Object.entries(groups)
-          .map(
-            ([key, values]) => {
-
-              const ri =
-                partitions.findIndex(
-                  p =>
-                    p.some(
-                      x =>
-                        x[0] === key
-                    )
-                );
-
-              return `
-
-                <div class="shuffle-group">
-
-                  <div class="key">
-                    ${esc(key)}
-                  </div>
-
-                  <div class="arrowline">
-
-                    ↓
-                    →
-                    R${ri + 1}
-                    ·
-                    Nodo ${(ri % nodeCount) + 1}
-                    ↓
-
-                  </div>
-
-                  <div
-                    style="
-                      font-family:monospace;
-                      color:var(--yellow)
-                    "
-                  >
-                    [${values.join(", ")}]
-                  </div>
-
-                </div>
-
-              `;
-
-            }
-          )
-          .join("")
-        }
-
+        ${Object.entries(groups).map(([key, values], idx) => {
+          const ri = partitions.findIndex(p => p.some(x => x[0] === key));
+          const targetNode = (ri % nodeCount) + 1;
+          
+          return `
+            <div class="shuffle-group cascade-item" style="animation-delay: ${idx * 60}ms;">
+              <div class="key">
+                <span>${esc(key)}</span>
+                <span class="route-badge remote">
+                  <span class="shuffle-packet-anim"></span>
+                  → R${ri + 1}
+                </span>
+              </div>
+              <div class="arrowline">
+                <span>Routed to Reducer <b>R${ri + 1}</b> on <b>Node ${targetNode}</b></span>
+              </div>
+              <div style="font-family:ui-monospace, monospace; color:var(--yellow); font-size:.85rem; padding: 4px 0;">
+                Values: [${values.join(", ")}]
+              </div>
+            </div>
+          `;
+        }).join("")}
       </div>
-
     </div>
-
   `;
 
+  /* CONNECTOR 4 */
+  const shufflePackets = Object.entries(groups).map(([k, v]) => `Route: ${k} [${v.join(",")}] → Reducer`);
+  renderConnector(
+    "connector4",
+    shufflePackets,
+    `Feeding grouped key arrays into ${reducerCount} Reducer tasks on worker nodes...`
+  );
 
   /* =====================================================
-     ETAPA 5 — REDUCE
+     STAGE 5 — REDUCE
   ===================================================== */
+  const opName = aggregationMode === "max" ? "Maximum" : (aggregationMode === "min" ? "Minimum" : "Average");
+  const opFuncDisplay = aggregationMode === "max" ? "max" : (aggregationMode === "min" ? "min" : "avg");
 
-  document.getElementById(
-    "reduceStage"
-  ).innerHTML = `
-
+  document.getElementById("reduceStage").innerHTML = `
     <div class="stage-wide">
-
       <div class="stage-title-row">
-
-        <div class="stage-title">
-          5. Reduce
+        <div class="stage-title">5. Reduce Phase (${opName})</div>
+        <div class="stage-tags-group">
+          <span class="tag">${reducerCount} Reducer Tasks</span>
+          <span class="tag stage-time-tag">⏱️ ${timings.reduceTime} ms (${timings.reducePct}%)</span>
         </div>
-
-        <span class="tag">
-          ${reducerCount} tareas Reducer
-        </span>
-
       </div>
-
-
       <div class="stage-sub">
-
-        Cada Reducer procesa sus grupos
-        y aplica <code>max()</code>.
-
+        Each Reducer receives grouped lists of values for its keys and applies <code>${opFuncDisplay}()</code>.
       </div>
-
-
       <div class="reducer-grid">
+        ${partitions.map((p, i) => `
+          <div class="mini-task reducer cascade-item" style="animation-delay: ${i * 70}ms;">
+            <h4>
+              <span>R${i + 1}</span>
+              <span style="color:var(--muted); font-size:.74rem;">Node ${(i % nodeCount) + 1}</span>
+            </h4>
+            ${
+              p.length
+                ? p.map(([key, values]) => {
+                    const resultVal = calculateAggregation(values, aggregationMode);
+                    const calcDetail = aggregationMode === "avg"
+                      ? `avg(${values.join(", ")}) = ${values.reduce((a,b)=>a+b,0)}/${values.length} → <b style="color:var(--yellow);">${resultVal}°C</b>`
+                      : `${opFuncDisplay}(${values.join(", ")}) → <b style="color:var(--yellow);">${resultVal}°C</b>`;
 
-        ${partitions
-          .map(
-            (p, i) => `
-
-              <div class="mini-task reducer">
-
-                <h4>
-                  R${i + 1}
-                  —
-                  Nodo ${(i % nodeCount) + 1}
-                </h4>
-
-
-                ${
-                  p.length
-
-                    ? p
-                        .map(
-                          ([key, values]) => `
-
-                            <div class="kv">
-
-                              <span class="key">
-                                ${esc(key)}
-                              </span>
-
-                              →
-
-                              <span class="value">
-                                [${values.join(", ")}]
-                              </span>
-
-                            </div>
-
-
-                            <div class="small">
-
-                              max(${values.join(", ")})
-
-                              →
-
-                              <b
-                                style="
-                                  color:var(--yellow)
-                                "
-                              >
-                                ${Math.max(...values)}°C
-                              </b>
-
-                            </div>
-
-                          `
-                        )
-                        .join("")
-
-                    : `
-                      <div class="small">
-                        Esta partición no recibió claves.
+                    return `
+                      <div class="kv">
+                        <span class="key">${esc(key)}</span>
+                        <span style="color:#777">→</span>
+                        <span class="value">[${values.join(", ")}]</span>
                       </div>
-                    `
-                }
-
-              </div>
-
-            `
-          )
-          .join("")
-        }
-
+                      <div class="small" style="margin: 4px 0 10px; padding-left: 2px;">
+                        ${calcDetail}
+                      </div>
+                    `;
+                  }).join("")
+                : `<div class="small">No keys assigned to this partition.</div>`
+            }
+          </div>
+        `).join("")}
       </div>
-
     </div>
-
   `;
 
+  /* CONNECTOR 5 */
+  const reducePackets = reduced.map(([c, t]) => `Aggregated: ${c} = ${t}°C`);
+  renderConnector(
+    "connector5",
+    reducePackets,
+    `Emitting aggregated ${opName} scalars to distributed storage files...`
+  );
 
   /* =====================================================
-     ETAPA 6 — RESULTADO
+     STAGE 6 — OUTPUT
   ===================================================== */
-
-  document.getElementById(
-    "outputStage"
-  ).innerHTML = `
-
+  document.getElementById("outputStage").innerHTML = `
     <div class="stage-wide">
-
       <div class="stage-title-row">
-
-        <div class="stage-title">
-          6. Resultado
+        <div class="stage-title">6. Output Phase</div>
+        <div class="stage-tags-group">
+          <span class="tag">Final Partitioned Output</span>
+          <span class="tag stage-time-tag">⏱️ ${timings.outputTime} ms (${timings.outputPct}%)</span>
         </div>
-
-        <span class="tag">
-          salida de los Reducers
-        </span>
-
       </div>
-
-
       <div class="stage-sub">
-
-        Una temperatura máxima por ciudad.
-
+        One ${opName.toLowerCase()} temperature per city emitted to distributed storage.
       </div>
-
-
       <div class="results">
-
-        ${reduced
-          .map(
-            ([city, temp]) => `
-
-              <div class="result">
-
-                <div class="city">
-                  ${esc(city)}
-                </div>
-
-                <div class="temp">
-                  ${temp}°C
-                </div>
-
-              </div>
-
-            `
-          )
-          .join("")
-        }
-
+        ${reduced.map(([city, temp, stats], idx) => `
+          <div class="result cascade-item" style="animation-delay: ${idx * 60}ms;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span class="city">${esc(city)}</span>
+              <span class="stat-badge accent">${aggregationMode.toUpperCase()}</span>
+            </div>
+            <div class="temp">${temp}°C</div>
+            <div class="sub-stats">
+              <span>Min: ${stats.min}°C</span>
+              <span>Avg: ${stats.avg}°C</span>
+              <span>Max: ${stats.max}°C</span>
+            </div>
+          </div>
+        `).join("")}
       </div>
-
     </div>
-
   `;
 
+  /* CONNECTOR 6 — JOB COMPLETION */
+  const completePackets = [
+    "Job Complete: SUCCESS",
+    `Total Time: ${timings.totalTime} ms`,
+    `Speedup: ${timings.speedup}x`,
+    `Saved: ${timings.savingsPct}%`
+  ];
+  renderConnector(
+    "connector6",
+    completePackets,
+    `MapReduce Job Finished · Complete Latency & Timing Breakdown ready below...`
+  );
 
   /* =====================================================
-     MOSTRAR ETAPAS
+     STAGE 7 — TIMING BREAKDOWN
   ===================================================== */
+  renderTimingBreakdown(timings);
 
-  const ids = [
+  /* =====================================================
+     STAGE & CONNECTOR VISIBILITY
+  ===================================================== */
+  const stageIds = [
     "inputStage",
     "splitStage",
     "mapStage",
@@ -2413,433 +3012,234 @@ function render() {
     "outputStage"
   ];
 
+  stageIds.forEach((id, i) => {
+    reveal(id, i <= phase, i === phase);
+  });
 
-  ids.forEach(
-    (id, i) => {
-
-      reveal(
-        id,
-        i <= phase,
-        i === phase
-      );
-
-    }
-  );
-
-
-  /* CONECTORES */
-
-  for (
-    let i = 1;
-    i <= 5;
-    i++
-  ) {
-
-    reveal(
-      "connector" + i,
-      i <= phase
-    );
-
+  /* CONNECTORS 1 TO 5 */
+  for (let i = 1; i <= 5; i++) {
+    reveal("connector" + i, i <= phase);
   }
 
+  /* CONNECTOR 6 & TIMING STAGE (Shown when reaching Output) */
+  reveal("connector6", phase === 5);
+  reveal("timingStage", phase === 5, true);
 
-  /* BOTONES */
-
-  document.getElementById(
-    "prevBtn"
-  ).disabled = phase === 0;
-
-
-  document.getElementById(
-    "nextBtn"
-  ).disabled = phase === 5;
-
+  /* BUTTON STATES */
+  document.getElementById("prevBtn").disabled = phase === 0;
+  document.getElementById("nextBtn").disabled = phase === 5;
 }
 
 
 /* =========================================================
-   CAMBIO DE ETAPA
+   SCROLL & NAVIGATION
 ========================================================= */
 
 function scrollToStage(target) {
-
   if (!target) return;
 
-  const controls =
-    document.querySelector(".controls");
+  const controls = document.querySelector(".controls");
+  const controlsRect = controls.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
 
-  const controlsRect =
-    controls.getBoundingClientRect();
+  const topSafeArea = controlsRect.bottom + 20;
+  const bottomSafeArea = window.innerHeight - 30;
 
-  const targetRect =
-    target.getBoundingClientRect();
-
-  /*
-   * Espacio que realmente ocupa la barra sticky.
-   */
-  const topSafeArea =
-    controlsRect.bottom + 24;
-
-  /*
-   * Dejamos un pequeño margen inferior.
-   */
-  const bottomSafeArea =
-    window.innerHeight - 40;
-
-
-  /*
-   * Si la etapa ya está cómodamente visible,
-   * no movemos absolutamente nada.
-   */
-  if (
-    targetRect.top >= topSafeArea &&
-    targetRect.bottom <= bottomSafeArea
-  ) {
+  if (targetRect.top >= topSafeArea && targetRect.bottom <= bottomSafeArea) {
     return;
   }
 
-
-  /*
-   * Si la etapa está por encima de la zona visible,
-   * la colocamos justo debajo de los cont
-   */
   if (targetRect.top < topSafeArea) {
-
-    const distance =
-      targetRect.top - topSafeArea;
-
-    window.scrollBy({
-      top: distance,
-      behavior: "smooth"
-    });
-
+    const distance = targetRect.top - topSafeArea;
+    window.scrollBy({ top: distance, behavior: "smooth" });
     return;
   }
 
-
-  /*
-   * Si está por debajo del viewport,
-   * intentamos mostrarla completa sin hacer
-   * un salto innecesariamente grande.
-   */
   if (targetRect.bottom > bottomSafeArea) {
-
-    const distance =
-      targetRect.bottom - bottomSafeArea;
-
-    window.scrollBy({
-      top: distance,
-      behavior: "smooth"
-    });
-
+    const distance = targetRect.bottom - bottomSafeArea;
+    window.scrollBy({ top: distance, behavior: "smooth" });
   }
-
 }
 
 function setPhase(p) {
-
   const oldPhase = phase;
-
-  phase =
-    Math.max(
-      0,
-      Math.min(5, p)
-    );
-
+  phase = Math.max(0, Math.min(5, p));
 
   render();
 
+  /* ACTIVE TRANSIT ANIMATION ON CONNECTOR */
+  if (phase > oldPhase) {
+    const activeConn = document.getElementById("connector" + phase);
+    if (activeConn) {
+      activeConn.classList.add("in-transit");
+      setTimeout(() => {
+        activeConn.classList.remove("in-transit");
+      }, 1000);
+    }
+  }
 
-  /* =========================================
-     NAVEGACIÓN DIDÁCTICA
-  ========================================= */
-        if (phase !== oldPhase) {
+  if (phase !== oldPhase) {
+    const stageIds = [
+      "inputStage",
+      "splitStage",
+      "mapStage",
+      "shuffleStage",
+      "reduceStage",
+      "outputStage"
+    ];
 
-            const ids = [
-                "inputStage",
-                "splitStage",
-                "mapStage",
-                "shuffleStage",
-                "reduceStage",
-                "outputStage"
-            ];
+    const target = (phase === 5)
+      ? document.getElementById("outputStage")
+      : document.getElementById(stageIds[phase]);
 
-            const target =
-                document.getElementById(
-                    ids[phase]
-                );
+    if (target) {
+      setTimeout(() => {
+        scrollToStage(target);
+        target.classList.remove("stage-focus");
+        void target.offsetWidth;
+        target.classList.add("stage-focus");
 
+        setTimeout(() => {
+          target.classList.remove("stage-focus");
+        }, 1200);
+      }, 80);
+    }
+  }
+}
 
-            if (target) {
-
-                setTimeout(() => {
-
-                    scrollToStage(target);
-
-                    target.classList.remove(
-                        "stage-focus"
-                    );
-
-                    void target.offsetWidth;
-
-                    target.classList.add(
-                        "stage-focus"
-                    );
-
-
-                    setTimeout(() => {
-
-                        target.classList.remove(
-                            "stage-focus"
-                        );
-
-                    }, 1200);
-
-                }, 80);
-
-            }
-
-        }
-  
-
+function setAggregationMode(mode) {
+  if (aggregationMode === mode) return;
+  aggregationMode = mode;
+  render();
 }
 
 
 /* =========================================================
-   CONTROLES SLIDERS
+   EVENT LISTENERS
 ========================================================= */
 
-document.getElementById(
-  "nodes"
-).addEventListener(
-  "input",
-  e => {
+/* Range Sliders */
+document.getElementById("nodes").addEventListener("input", e => {
+  nodeCount = Number(e.target.value);
+  render();
+});
 
-    nodeCount =
-      Number(e.target.value);
+document.getElementById("mappers").addEventListener("input", e => {
+  mapperCount = Number(e.target.value);
+  render();
+});
 
-    render();
+document.getElementById("reducers").addEventListener("input", e => {
+  reducerCount = Number(e.target.value);
+  render();
+});
 
-  }
-);
+/* Aggregation Function Selector */
+document.querySelectorAll(".fn-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    setAggregationMode(btn.dataset.fn);
+  });
+});
 
-
-document.getElementById(
-  "mappers"
-).addEventListener(
-  "input",
-  e => {
-
-    mapperCount =
-      Number(e.target.value);
-
-    /*
-     * Reiniciamos la etapa para evitar
-     * inconsistencias visuales cuando cambia
-     * la estructura de los datos.
-     */
-
-    phase = Math.min(
-      phase,
-      5
-    );
-
-    render();
-
-  }
-);
-
-
-document.getElementById(
-  "reducers"
-).addEventListener(
-  "input",
-  e => {
-
-    reducerCount =
-      Number(e.target.value);
-
-    render();
-
-  }
-);
-
-
-/* =========================================================
-   BOTÓN ANTERIOR
-========================================================= */
-
-document.getElementById(
-  "prevBtn"
-).onclick = () => {
-
-  setPhase(
-    phase - 1
-  );
-
+/* Navigation Buttons */
+document.getElementById("prevBtn").onclick = () => {
+  setPhase(phase - 1);
 };
 
-
-/* =========================================================
-   BOTÓN SIGUIENTE
-========================================================= */
-
-document.getElementById(
-  "nextBtn"
-).onclick = () => {
-
-  setPhase(
-    phase + 1
-  );
-
+document.getElementById("nextBtn").onclick = () => {
+  setPhase(phase + 1);
 };
 
-
-/* =========================================================
-   REINICIAR
-========================================================= */
-
-document.getElementById(
-  "resetBtn"
-).onclick = () => {
-
+/* Reset Button */
+document.getElementById("resetBtn").onclick = () => {
   if (timer) {
-
     clearInterval(timer);
-
     timer = null;
-
   }
-
 
   nodeCount = 3;
   mapperCount = 4;
   reducerCount = 2;
   phase = 0;
+  aggregationMode = "max";
 
-
-  document.getElementById(
-    "nodes"
-  ).value = 3;
-
-
-  document.getElementById(
-    "mappers"
-  ).value = 4;
-
-
-  document.getElementById(
-    "reducers"
-  ).value = 2;
-
-
-  document.getElementById(
-    "playBtn"
-  ).textContent =
-    "▶ Ejecutar todo";
-
+  document.getElementById("nodes").value = 3;
+  document.getElementById("mappers").value = 4;
+  document.getElementById("reducers").value = 2;
+  document.getElementById("playBtn").textContent = "▶ Run All";
 
   render();
-
 
   window.scrollTo({
     top: 0,
     behavior: "smooth"
   });
-
 };
 
-
-/* =========================================================
-   EJECUTAR TODO
-========================================================= */
-
-document.getElementById(
-  "playBtn"
-).onclick = () => {
-
-
-  /* Si ya está ejecutándose,
-     pausamos. */
-
+/* Run All / Play Button */
+document.getElementById("playBtn").onclick = () => {
   if (timer) {
-
     clearInterval(timer);
-
     timer = null;
-
-    document.getElementById(
-      "playBtn"
-    ).textContent =
-      "▶ Ejecutar todo";
-
+    document.getElementById("playBtn").textContent = "▶ Run All";
     return;
-
   }
-
-
-  /* Si terminó, comenzamos
-     nuevamente desde el principio. */
 
   if (phase === 5) {
-
     phase = 0;
-
     render();
-
   }
 
-
-  document.getElementById(
-    "playBtn"
-  ).textContent =
-    "⏸ Pausar";
-
-
-  /*
-   * Cada 2.6 segundos avanza
-   * automáticamente.
-   */
+  document.getElementById("playBtn").textContent = "⏸ Pause";
 
   timer = setInterval(() => {
-
-
     if (phase >= 5) {
-
       clearInterval(timer);
-
       timer = null;
-
-      document.getElementById(
-        "playBtn"
-      ).textContent =
-        "▶ Ejecutar todo";
-
+      document.getElementById("playBtn").textContent = "▶ Run All";
       return;
-
     }
 
-
-    setPhase(
-      phase + 1
-    );
-
-
+    setPhase(phase + 1);
   }, 2600);
-
 };
+
+/* Keyboard Navigation Shortcuts */
+window.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+
+  if (e.key === "ArrowRight" || e.key === "PageDown") {
+    e.preventDefault();
+    if (phase < 5) setPhase(phase + 1);
+  } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+    e.preventDefault();
+    if (phase > 0) setPhase(phase - 1);
+  } else if (e.key === " " || e.code === "Space") {
+    e.preventDefault();
+    document.getElementById("playBtn").click();
+  } else if (e.key === "r" || e.key === "R") {
+    e.preventDefault();
+    document.getElementById("resetBtn").click();
+  }
+});
+
+/* Sticky Controls Shadow on Scroll */
+window.addEventListener("scroll", () => {
+  const controls = document.getElementById("controlsPanel");
+  if (controls) {
+    controls.classList.toggle("is-scrolled", window.scrollY > 40);
+  }
+});
 
 
 /* =========================================================
-   INICIALIZACIÓN
+   INITIALIZATION
 ========================================================= */
 
 renderDataset();
-
 render();
 
 </script>
 
 </body>
 </html>
-
