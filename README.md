@@ -27,7 +27,8 @@ escala, incluyendo el uso de bases de datos NoSQL y herramientas orientadas al p
 ├── taller-spark.ipynb
 ├── mapreduce_simulador_Ramirez.html
 ├── Ramirez_SimuladorMLlib.html
-├── RamirezTallerStroke.ipynb
+├── RamirezICTUS_1055.ipynb
+├── RamirezSalario_1055.ipynb
 └── README.md
 ```
 
@@ -64,11 +65,19 @@ Temas: regresión lineal con Mínimos Cuadrados Ordinarios (OLS), métricas de e
 
 [Ver Simulador](Ramirez_SimuladorMLlib.html)
 
-### Taller PySpark - Predicción de ACV (Stroke)
+### Taller PySpark - Predicción de ICTUS (ACV)
 
 Implementación y evaluación de modelos de machine learning distribuidos con PySpark MLlib bajo la metodología CRISP-DM para predecir accidentes cerebrovasculares.
 
-Temas: metodología CRISP-DM, limpieza y diagnóstico de datos, análisis exploratorio univariado y bivariado, feature engineering (VectorAssembler, StringIndexer) y modelos de clasificación (Regresión Logística, Decision Tree, Random Forest, GBT).
+Temas: metodología CRISP-DM, limpieza y diagnóstico de datos, análisis exploratorio univariado y bivariado, feature engineering (VectorAssembler, StringIndexer) y modelos de clasificación (Regresión Logística, Decision Tree, Random Forest, GBT y Multilayer Perceptron - MLP).
 
-[Ver Taller](RamirezTallerStroke.ipynb)
+[Ver Taller](RamirezICTUS_1055.ipynb)
+
+### Taller PySpark - Detección de Salarios (Adult Census Income)
+
+Implementación y evaluación de modelos de clasificación supervisada con PySpark MLlib bajo la metodología CRISP-DM para predecir si los ingresos anuales de un individuo superan los $50.000 USD.
+
+Temas: metodología CRISP-DM, diagnóstico y tratamiento de datos, análisis exploratorio univariado y bivariado, pipelines de transformación (StringIndexer, VectorAssembler) y modelos de clasificación (Regresión Logística, Decision Tree, Random Forest, GBT y Multilayer Perceptron - MLP).
+
+[Ver Taller](RamirezSalario_1055.ipynb)
 
